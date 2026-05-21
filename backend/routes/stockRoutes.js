@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { getStocks, getStockById, } = require('../controllers/stockController');
+const { getStocks, createStock } = require('../controllers/stockController');
 
 router.get('/', getStocks);
-router.get('/:ticker', getStockById);
+router.post('/', createStock);
 
 module.exports = router;

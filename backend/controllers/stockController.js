@@ -1,22 +1,36 @@
 const Stock = require('../models/Stock');
-const redis = require('../config/redis');
 const fairValueService = require('../services/fairValueService');
 
-// @desc    Get all stocks (with caching)
+// @desc    Get all stocks
 // @route   GET /api/stocks
 exports.getStocks = async (req, res) => {
     try {
-        const cachedStocks = await redis.get('all_stocks');
-        if (cachedStocks) {
-            return res.json(JSON.parse(cachedStocks));
-        }
-
         const stocks = await Stock.find();
-        await redis.setex('all_stocks', 3600, JSON.stringify(stocks)); // Cache for 1 hour
-
         res.json(stocks);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 };
 
+// @desc    Create a new stock
+// @route   POST /api/stocks
+exports.createStock = async (req, res) => {
+    try {
+        const { ticker, name, price } = req.body;
+
+        let stock = await Stock.findOne({ ticker: ticker.toUpperCase() });
+        if (stock) {
+            return res.status(400).json({ message: 'Stock already exists' });
+        }
+
+        stock = await Stock.create({
+            ticker: ticker.toUpperCase(),
+            name,
+            price: price || 0
+        });
+
+        res.status(201).json(stock);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
