@@ -289,9 +289,21 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
   final _notesController = TextEditingController();
   Stock? _selectedStock;
   bool _isSaving = false;
+  String? _editingId;
 
-  Future<void> _add() async {
-    if (_selectedStock == null || _targetController.text.isEmpty) return;
+  void _clearForm() {
+    _tickerController.clear();
+    _targetController.clear();
+    _notesController.clear();
+    setState(() {
+      _selectedStock = null;
+      _editingId = null;
+    });
+  }
+
+  Future<void> _save() async {
+    if (_targetController.text.isEmpty) return;
+    if (_editingId == null && _selectedStock == null) return;
 
     setState(() => _isSaving = true);
     try {
@@ -301,16 +313,21 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
           double.parse(_targetController.text),
         );
       } else {
-        await RecommendationService().updateTechnical(
-          _selectedStock!.ticker,
-          double.parse(_targetController.text),
-          _notesController.text,
-        );
+        if (_editingId != null) {
+          await RecommendationService().updateTechnicalById(
+            _editingId!,
+            double.parse(_targetController.text),
+            _notesController.text,
+          );
+        } else {
+          await RecommendationService().updateTechnical(
+            _selectedStock!.ticker,
+            double.parse(_targetController.text),
+            _notesController.text,
+          );
+        }
       }
-      _tickerController.clear();
-      _targetController.clear();
-      _notesController.clear();
-      setState(() => _selectedStock = null);
+      _clearForm();
       widget.onRefresh();
     } catch (e) {
       ScaffoldMessenger.of(
@@ -319,6 +336,16 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
     } finally {
       setState(() => _isSaving = false);
     }
+  }
+
+  void _startEditing(Recommendation item) {
+    setState(() {
+      _editingId = item.id;
+      _selectedStock = item.stock;
+      _tickerController.text = item.stock.ticker;
+      _targetController.text = item.target.toString();
+      _notesController.text = item.notes ?? "";
+    });
   }
 
   Future<void> _delete(String id) async {
@@ -355,37 +382,44 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                 ),
                 child: Column(
                   children: [
-                    Autocomplete<Stock>(
-                      displayStringForOption: (Stock option) =>
-                          '${option.ticker} - ${option.name ?? ""}',
-                      optionsBuilder: (TextEditingValue textEditingValue) {
-                        if (textEditingValue.text == '') {
-                          return const Iterable<Stock>.empty();
-                        }
-                        return widget.allStocks.where((Stock option) {
-                          return option.ticker.contains(
-                                textEditingValue.text.toUpperCase(),
-                              ) ||
-                              (option.name?.toUpperCase() ?? "").contains(
-                                textEditingValue.text.toUpperCase(),
+                    SizedBox(height: 12),
+                    if (_editingId != null) 
+                      Text(
+                        'Editing: ${_selectedStock?.ticker}', 
+                        style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)
+                      )
+                    else 
+                      Autocomplete<Stock>(
+                        displayStringForOption: (Stock option) =>
+                            '${option.ticker} - ${option.name ?? ""}',
+                        optionsBuilder: (TextEditingValue textEditingValue) {
+                          if (textEditingValue.text == '') {
+                            return const Iterable<Stock>.empty();
+                          }
+                          return widget.allStocks.where((Stock option) {
+                            return option.ticker.contains(
+                                  textEditingValue.text.toUpperCase(),
+                                ) ||
+                                (option.name?.toUpperCase() ?? "").contains(
+                                  textEditingValue.text.toUpperCase(),
+                                );
+                          });
+                        },
+                        onSelected: (Stock selection) {
+                          setState(() => _selectedStock = selection);
+                        },
+                        fieldViewBuilder:
+                            (context, controller, focusNode, onFieldSubmitted) {
+                              return TextField(
+                                controller: controller,
+                                focusNode: focusNode,
+                                decoration: InputDecoration(
+                                  labelText: 'Select Stock (Ticker or Name)',
+                                  prefixIcon: Icon(Icons.search),
+                                ),
                               );
-                        });
-                      },
-                      onSelected: (Stock selection) {
-                        setState(() => _selectedStock = selection);
-                      },
-                      fieldViewBuilder:
-                          (context, controller, focusNode, onFieldSubmitted) {
-                            return TextField(
-                              controller: controller,
-                              focusNode: focusNode,
-                              decoration: InputDecoration(
-                                labelText: 'Select Stock (Ticker or Name)',
-                                prefixIcon: Icon(Icons.search),
-                              ),
-                            );
-                          },
-                    ),
+                            },
+                      ),
                     SizedBox(height: 12),
                     TextField(
                       controller: _targetController,
@@ -398,14 +432,30 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                         decoration: InputDecoration(labelText: 'Notes'),
                       ),
                     SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: (_isSaving || _selectedStock == null)
-                          ? null
-                          : _add,
-                      child: Text('Add / Update'),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: Size(double.infinity, 45),
-                      ),
+                    Row(
+                      children: [
+                        if (_editingId != null) 
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _clearForm,
+                              child: Text('Cancel'),
+                            ),
+                          ),
+                        if (_editingId != null) SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: (_isSaving || (_editingId == null && _selectedStock == null))
+                                ? null
+                                : _save,
+                            child: Text(_editingId == null ? 'Add Call' : 'Update Call'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _editingId == null ? Colors.deepPurple : Colors.green,
+                              foregroundColor: Colors.white,
+                              fixedSize: Size.fromHeight(45),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -429,9 +479,19 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                   subtitle: Text(
                     'Target: ${item.target}${item.notes != null && item.notes!.isNotEmpty ? "\nNotes: ${item.notes}" : ""}',
                   ),
-                  trailing: IconButton(
-                    icon: Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _delete(item.id),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.type == 'technical')
+                        IconButton(
+                          icon: Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _startEditing(item),
+                        ),
+                      IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _delete(item.id),
+                      ),
+                    ],
                   ),
                 ),
               );

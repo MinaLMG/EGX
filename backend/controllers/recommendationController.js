@@ -4,6 +4,16 @@ const RSPRecommendation = require('../models/RSPRecommendation');
 const FundamentalRecommendation = require('../models/FundamentalRecommendation');
 const TechnicalRecommendation = require('../models/TechnicalRecommendation');
 const Stock = require('../models/Stock');
+const ScoringService = require('../services/scoringService');
+
+exports.recalculateScores = async (req, res) => {
+    try {
+        const result = await ScoringService.calculateAllScores(req.body?.weights);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
 
 // BF UPDATE: Clear all and insert new ones
 exports.updateBfPrices = async (req, res) => {
@@ -24,11 +34,13 @@ exports.updateBfPrices = async (req, res) => {
                 });
             }
         }
-        
         // 3. Bulk insert
         if (updates.length > 0) {
             await BFValue.insertMany(updates);
         }
+        
+        // 4. Recalculate scores
+        await ScoringService.calculateAllScores();
         
         res.json({ message: `Successfully updated ${updates.length} BF values.` });
     } catch (error) {
@@ -70,6 +82,9 @@ exports.updateFundamental = async (req, res) => {
             { upsert: true, new: true }
         ).populate('stock');
         
+        // Recalculate scores
+        await ScoringService.calculateAllScores();
+        
         res.json(recommendation);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -79,6 +94,10 @@ exports.updateFundamental = async (req, res) => {
 exports.deleteFundamental = async (req, res) => {
     try {
         await FundamentalRecommendation.findByIdAndDelete(req.params.id);
+        
+        // Recalculate scores
+        await ScoringService.calculateAllScores();
+        
         res.json({ message: 'Deleted' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -92,11 +111,34 @@ exports.updateTechnical = async (req, res) => {
         const stock = await Stock.findOne({ ticker: ticker.toUpperCase() });
         if (!stock) return res.status(404).json({ message: 'Stock not found' });
         
-        const recommendation = await TechnicalRecommendation.findOneAndUpdate(
-            { stock: stock._id },
+        const recommendation = new TechnicalRecommendation({
+            stock: stock._id,
+            target,
+            notes
+        });
+        await recommendation.save();
+        const populatedRec = await TechnicalRecommendation.findById(recommendation._id).populate('stock');
+        
+        // Recalculate scores
+        await ScoringService.calculateAllScores();
+        
+        res.json(populatedRec);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.updateTechnicalById = async (req, res) => {
+    try {
+        const { target, notes } = req.body;
+        const recommendation = await TechnicalRecommendation.findByIdAndUpdate(
+            req.params.id,
             { target, notes },
-            { upsert: true, new: true }
+            { new: true }
         ).populate('stock');
+        
+        // Recalculate scores
+        await ScoringService.calculateAllScores();
         
         res.json(recommendation);
     } catch (error) {
@@ -107,6 +149,10 @@ exports.updateTechnical = async (req, res) => {
 exports.deleteTechnical = async (req, res) => {
     try {
         await TechnicalRecommendation.findByIdAndDelete(req.params.id);
+        
+        // Recalculate scores
+        await ScoringService.calculateAllScores();
+        
         res.json({ message: 'Deleted' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -136,6 +182,9 @@ exports.updateRFP = async (req, res) => {
             await RFPRecommendation.insertMany(updates);
         }
         
+        // Recalculate scores
+        await ScoringService.calculateAllScores();
+        
         const result = await RFPRecommendation.find().populate('stock');
         res.json(result);
     } catch (error) {
@@ -164,6 +213,9 @@ exports.updateRSP = async (req, res) => {
         if (updates.length > 0) {
             await RSPRecommendation.insertMany(updates);
         }
+        
+        // Recalculate scores
+        await ScoringService.calculateAllScores();
         
         const result = await RSPRecommendation.find().populate('stock');
         res.json(result);

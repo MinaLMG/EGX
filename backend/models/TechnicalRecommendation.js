@@ -4,8 +4,7 @@ const TechnicalRecommendationSchema = new mongoose.Schema({
     stock: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Stock',
-        required: true,
-        unique: true
+        required: true
     },
     target: {
         type: Number,

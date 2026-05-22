@@ -5,9 +5,8 @@ const arabicStockService = require('../services/arabicStockService');
 // @desc    Get all stocks
 // @route   GET /api/stocks
 exports.getStocks = async (req, res) => {
-    console.log('getStocks called');
     try {
-        const stocks = await Stock.find();
+        const stocks = await Stock.find().sort({ total_score: -1 });
         res.json(stocks);
     } catch (err) {
         res.status(500).json({ message: err.message });

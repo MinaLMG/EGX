@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/stock.dart';
 
+import '../config/app_config.dart';
+
 class ApiService {
-  // Use 10.0.2.2 for Android Emulator, localhost for iOS or Web
-  static const String baseUrl = 'http://localhost:5000/api';
+  final String baseUrl = '${AppConfig.apiBaseUrl}/api';
 
   Future<List<Stock>> fetchStocks() async {
     final response = await http.get(Uri.parse('$baseUrl/stocks'));

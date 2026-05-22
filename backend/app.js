@@ -46,6 +46,7 @@ app.use(express.json());
 
 app.use('/api/stocks', require('./routes/stockRoutes'));
 app.use('/api/recommendations', require('./routes/recommendationRoutes'));
+app.use('/api/mubasher', require('./routes/mubasherRoutes'));
 
 // Health Check
 app.get('/', (req, res) => {

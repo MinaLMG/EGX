@@ -20,7 +20,14 @@ const StockSchema = new mongoose.Schema({
     lastUpdated: {
         type: Date,
         default: Date.now
-    }
+    },
+    // Scoring fields
+    bf_potential: Number,
+    fundamental_potential: Number,
+    technical_potential: Number,
+    rfp_score: { type: Number, default: 0 },
+    rsp_score: { type: Number, default: 0 },
+    total_score: { type: Number, default: 0 }
 });
 
 module.exports = mongoose.model('Stock', StockSchema);

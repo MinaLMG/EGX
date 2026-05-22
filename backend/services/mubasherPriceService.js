@@ -1,6 +1,8 @@
 const axios = require('axios');
 const Stock = require('../models/Stock');
 const MubasherMatch = require('../models/MubasherMatch');
+const MubasherUnmatched = require('../models/MubasherUnmatched');
+const ScoringService = require('./scoringService');
 
 /**
  * Fetch stock prices from Mubasher API and update Database
@@ -86,6 +88,38 @@ exports.updatePricesFromMubasher = async () => {
         }
 
         console.log(`Successfully updated ${updatedCount} stocks.`);
+
+        // --- Orphan Tracking Logic ---
+        // 1. Identify Stocks without updates in this run
+        const allSystemStocks = await Stock.find({}, 'ticker');
+        const updatedTickersSet = new Set(tickers);
+        const unmatchedTickers = allSystemStocks
+            .filter(s => !updatedTickersSet.has(s.ticker.toUpperCase()))
+            .map(s => s.ticker);
+
+        // 2. Identify Mubasher Prices that didn't match any ticker
+        const matchedMubasherNames = new Set();
+        matches.forEach(m => matchedMubasherNames.add(m.name));
+        
+        const unmatchedMubasherNames = priceData
+            .filter(item => !matchedMubasherNames.has(item.name) && !matchMap[item.name])
+            .map(item => item.name);
+
+        // 3. Save to Unmatched collection
+        await MubasherUnmatched.deleteMany({});
+        const unmatchedEntries = [
+            ...unmatchedTickers.map(t => ({ type: 'stock', identifier: t })),
+            ...unmatchedMubasherNames.map(n => ({ type: 'mubasher_price', identifier: n }))
+        ];
+        
+        if (unmatchedEntries.length > 0) {
+            await MubasherUnmatched.insertMany(unmatchedEntries);
+            console.log(`Saved ${unmatchedEntries.length} unmatched items.`);
+        }
+        // -----------------------------
+        
+        // Recalculate scores with new prices
+        await ScoringService.calculateAllScores();
     } catch (err) {
         console.error('Mubasher update error:', err.message);
         if (err.response) {

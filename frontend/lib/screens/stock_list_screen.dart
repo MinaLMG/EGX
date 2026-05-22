@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/stock.dart';
 import '../services/api_service.dart';
 import 'match_screen.dart';
+import 'mubasher_matching_screen.dart';
 
 class StockListScreen extends StatefulWidget {
   @override
@@ -32,6 +33,14 @@ class _StockListScreenState extends State<StockListScreen> {
         backgroundColor: Colors.deepPurple,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: Icon(Icons.link),
+            tooltip: 'Mubasher Matching',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => MubasherMatchingScreen()),
+            ),
+          ),
           IconButton(icon: Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
@@ -73,7 +82,24 @@ class _StockListScreenState extends State<StockListScreen> {
                     ),
                     title: Text(stock.ticker, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     subtitle: Text(stock.name ?? 'No Name'),
-                    trailing: Icon(isMatched ? Icons.check_circle : Icons.warning_amber_rounded, color: isMatched ? Colors.green : Colors.orange),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          stock.totalScore.toStringAsFixed(2),
+                          style: TextStyle(
+                            color: Colors.deepPurple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16
+                          ),
+                        ),
+                        Icon(
+                          isMatched ? Icons.check_circle : Icons.warning_amber_rounded,
+                          color: isMatched ? Colors.green : Colors.orange,
+                          size: 16,
+                        ),
+                      ],
+                    ),
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(16.0),
@@ -107,6 +133,14 @@ class _StockListScreenState extends State<StockListScreen> {
                                 ],
                               ),
                             ],
+                            Divider(height: 32),
+                            Text('Recommendation Scores', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                            SizedBox(height: 8),
+                            _buildScoreRow('BF Potential (i1)', stock.bfPotential),
+                            _buildScoreRow('Fundamental (i2)', stock.fundamentalPotential),
+                            _buildScoreRow('Technical (i3)', stock.technicalPotential),
+                            _buildScoreRow('RFP Score', stock.rfpScore),
+                            _buildScoreRow('RSP Score', stock.rspScore),
                             SizedBox(height: 16),
                             Center(
                               child: ElevatedButton.icon(
@@ -135,6 +169,19 @@ class _StockListScreenState extends State<StockListScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildScoreRow(String label, double value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(value.toStringAsFixed(2), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
       ),
     );
   }

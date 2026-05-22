@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/recommendation.dart';
 
+import '../config/app_config.dart';
+
 class RecommendationService {
-  static const String baseUrl = 'http://localhost:5000/api/recommendations';
+  final String baseUrl = '${AppConfig.apiBaseUrl}/api/recommendations';
 
   Future<AllRecommendations> fetchAll() async {
     final response = await http.get(Uri.parse(baseUrl));
@@ -48,6 +50,17 @@ class RecommendationService {
       Uri.parse('$baseUrl/technical'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'ticker': ticker, 'target': target, 'notes': notes}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update technical recommendation');
+    }
+  }
+
+  Future<void> updateTechnicalById(String id, double target, String? notes) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl/technical/$id'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'target': target, 'notes': notes}),
     );
     if (response.statusCode != 200) {
       throw Exception('Failed to update technical recommendation');

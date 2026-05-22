@@ -15,6 +15,12 @@ class Stock {
     this.arabicStockAnalyzersFairValue,
     this.arabicStockGetter,
     required this.lastUpdated,
+    this.bfPotential = 0.0,
+    this.fundamentalPotential = 0.0,
+    this.technicalPotential = 0.0,
+    this.rfpScore = 0.0,
+    this.rspScore = 0.0,
+    this.totalScore = 0.0,
   });
 
   factory Stock.fromJson(Map<String, dynamic> json) {
@@ -32,8 +38,21 @@ class Stock {
       lastUpdated: json['lastUpdated'] != null 
           ? DateTime.parse(json['lastUpdated']) 
           : DateTime.now(),
+      bfPotential: (json['bf_potential'] as num?)?.toDouble() ?? 0.0,
+      fundamentalPotential: (json['fundamental_potential'] as num?)?.toDouble() ?? 0.0,
+      technicalPotential: (json['technical_potential'] as num?)?.toDouble() ?? 0.0,
+      rfpScore: (json['rfp_score'] as num?)?.toDouble() ?? 0.0,
+      rspScore: (json['rsp_score'] as num?)?.toDouble() ?? 0.0,
+      totalScore: (json['total_score'] as num?)?.toDouble() ?? 0.0,
     );
   }
+
+  final double bfPotential;
+  final double fundamentalPotential;
+  final double technicalPotential;
+  final double rfpScore;
+  final double rspScore;
+  final double totalScore;
 }
 
 class ArabicStockMatch {
