@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'config/app_config.dart';
+import 'services/auth_service.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +21,27 @@ class EGXApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
         fontFamily: 'Roboto',
       ),
-      home: HomeScreen(),
+      home: _AuthGate(),
+    );
+  }
+}
+
+class _AuthGate extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: AuthService().isLoggedIn(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.data == true) {
+          return HomeScreen();
+        }
+        return LoginScreen();
+      },
     );
   }
 }

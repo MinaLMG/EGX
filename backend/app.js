@@ -44,9 +44,13 @@ app.use(express.json());
 
 // Routes
 
+const { protect, authorize } = require('./middleware/auth');
+
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/stocks', require('./routes/stockRoutes'));
-app.use('/api/recommendations', require('./routes/recommendationRoutes'));
-app.use('/api/mubasher', require('./routes/mubasherRoutes'));
+app.use('/api/recommendations', protect, authorize('admin'), require('./routes/recommendationRoutes'));
+app.use('/api/mubasher', protect, authorize('admin'), require('./routes/mubasherRoutes'));
+app.use('/api/wallet', require('./routes/walletRoutes'));
 
 // Health Check
 app.get('/', (req, res) => {

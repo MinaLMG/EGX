@@ -1,11 +1,107 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../models/user.dart';
 import 'stock_list_screen.dart';
 import 'match_wizard_screen.dart';
 import 'recommendations_screen.dart';
+import 'wallet_screen.dart';
+import 'login_screen.dart';
+import 'admin_users_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final AuthService _authService = AuthService();
+  User? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await _authService.getUser();
+    setState(() => _user = user);
+  }
+
+  Future<void> _logout() async {
+    await _authService.logout();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => LoginScreen()),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final oldPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Change Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: oldPassController,
+              decoration: InputDecoration(labelText: 'Current Password', border: OutlineInputBorder()),
+              obscureText: true,
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: newPassController,
+              decoration: InputDecoration(labelText: 'New Password', border: OutlineInputBorder()),
+              obscureText: true,
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: confirmPassController,
+              decoration: InputDecoration(labelText: 'Confirm New Password', border: OutlineInputBorder()),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              if (newPassController.text.length < 6) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Min 6 characters required')));
+                return;
+              }
+              if (newPassController.text != confirmPassController.text) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Passwords do not match')));
+                return;
+              }
+              
+              final result = await _authService.changePassword(
+                oldPassController.text, 
+                newPassController.text,
+              );
+              
+              if (result['success']) {
+                Navigator.pop(ctx);
+              }
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'])));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple, foregroundColor: Colors.white),
+            child: Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isAdmin = _user?.isAdmin ?? false;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -14,6 +110,57 @@ class HomeScreen extends StatelessWidget {
         ),
         backgroundColor: Colors.deepPurple,
         elevation: 0,
+        actions: [
+          if (_user != null)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'password') _showChangePasswordDialog();
+                if (value == 'logout') _logout();
+              },
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Center(
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: Chip(
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(_user!.name, style: TextStyle(color: Colors.white, fontSize: 12)),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                        ],
+                      ),
+                      backgroundColor: Colors.deepPurple.shade300,
+                      avatar: Icon(
+                        isAdmin ? Icons.admin_panel_settings : Icons.person,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'password',
+                  child: ListTile(
+                    leading: Icon(Icons.lock_outline),
+                    title: Text('Change Password'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'logout',
+                  child: ListTile(
+                    leading: Icon(Icons.logout, color: Colors.red),
+                    title: Text('Logout', style: TextStyle(color: Colors.red)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -24,13 +171,13 @@ class HomeScreen extends StatelessWidget {
             stops: [0.0, 0.4],
           ),
         ),
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Welcome to EGX Matcher',
+                'Welcome, ${_user?.name ?? "User"}',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -39,13 +186,17 @@ class HomeScreen extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'Manage your stock data and fair value matching',
+                isAdmin
+                    ? 'Admin Dashboard — Full system control'
+                    : 'Your portfolio intelligence hub',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
                   fontSize: 16,
                 ),
               ),
               SizedBox(height: 32),
+
+              // ---- Common to all users ----
               _MenuCard(
                 title: 'Market Data',
                 subtitle: 'View all stocks and their current fair values',
@@ -53,31 +204,57 @@ class HomeScreen extends StatelessWidget {
                 color: Colors.blue.shade400,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => StockListScreen()),
+                  MaterialPageRoute(builder: (_) => StockListScreen()),
                 ),
               ),
               SizedBox(height: 20),
               _MenuCard(
-                title: 'ArabicStock Matching Wizard',
-                subtitle: 'Match unmatched stocks sequentially',
-                icon: Icons.auto_fix_high,
-                color: Colors.orange.shade400,
+                title: 'My Wallet',
+                subtitle: 'Portfolio rebalancing & buy/sell recommendations',
+                icon: Icons.account_balance_wallet,
+                color: Colors.teal.shade400,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => MatchWizardScreen()),
+                  MaterialPageRoute(builder: (_) => WalletScreen()),
                 ),
               ),
-              SizedBox(height: 20),
-              _MenuCard(
-                title: 'Recommendations Management',
-                subtitle: 'Manage BF values, RFP, RSP, and more',
-                icon: Icons.recommend,
-                color: Colors.green.shade400,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RecommendationsScreen()),
+
+              // ---- Admin-only cards ----
+              if (isAdmin) ...[
+                SizedBox(height: 20),
+                _MenuCard(
+                  title: 'ArabicStock Matching Wizard',
+                  subtitle: 'Match unmatched stocks sequentially',
+                  icon: Icons.auto_fix_high,
+                  color: Colors.orange.shade400,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => MatchWizardScreen()),
+                  ),
                 ),
-              ),
+                SizedBox(height: 20),
+                _MenuCard(
+                  title: 'Recommendations Management',
+                  subtitle: 'Manage BF values, RFP, RSP, and more',
+                  icon: Icons.recommend,
+                  color: Colors.green.shade400,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => RecommendationsScreen()),
+                  ),
+                ),
+                SizedBox(height: 20),
+                _MenuCard(
+                  title: 'User Management',
+                  subtitle: 'Approve or reject new registrations',
+                  icon: Icons.people_outline,
+                  color: Colors.pink.shade400,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AdminUsersScreen()),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

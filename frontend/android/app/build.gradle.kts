@@ -30,6 +30,20 @@ android {
         versionName = flutter.versionName
     }
 
+    flavorDimensions.add("app")
+    productFlavors {
+        create("standard") {
+            dimension = "app"
+            resValue("string", "app_name", "EGX Portfolio")
+        }
+        create("admin") {
+            dimension = "app"
+            applicationId = "com.example.egx_mobile.admin"
+            versionNameSuffix = "-admin"
+            resValue("string", "app_name", "EGX Admin")
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
