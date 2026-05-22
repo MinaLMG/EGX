@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'stock_list_screen.dart';
 import 'match_wizard_screen.dart';
+import 'recommendations_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   @override
@@ -64,6 +65,17 @@ class HomeScreen extends StatelessWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => MatchWizardScreen()),
+                ),
+              ),
+              SizedBox(height: 20),
+              _MenuCard(
+                title: 'Recommendations Management',
+                subtitle: 'Manage BF values, RFP, RSP, and more',
+                icon: Icons.recommend,
+                color: Colors.green.shade400,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RecommendationsScreen()),
                 ),
               ),
             ],

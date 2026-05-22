@@ -45,6 +45,7 @@ app.use(express.json());
 // Routes
 
 app.use('/api/stocks', require('./routes/stockRoutes'));
+app.use('/api/recommendations', require('./routes/recommendationRoutes'));
 
 // Health Check
 app.get('/', (req, res) => {
