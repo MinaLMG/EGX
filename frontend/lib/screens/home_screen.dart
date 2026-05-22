@@ -7,7 +7,10 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('EGX Dashboard', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'EGX Dashboard',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.deepPurple,
         elevation: 0,
       ),
@@ -27,12 +30,19 @@ class HomeScreen extends StatelessWidget {
             children: [
               Text(
                 'Welcome to EGX Matcher',
-                style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               SizedBox(height: 8),
               Text(
                 'Manage your stock data and fair value matching',
-                style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16),
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 16,
+                ),
               ),
               SizedBox(height: 32),
               _MenuCard(
@@ -47,7 +57,7 @@ class HomeScreen extends StatelessWidget {
               ),
               SizedBox(height: 20),
               _MenuCard(
-                title: 'Matching Wizard',
+                title: 'ArabicStock Matching Wizard',
                 subtitle: 'Match unmatched stocks sequentially',
                 icon: Icons.auto_fix_high,
                 color: Colors.orange.shade400,
