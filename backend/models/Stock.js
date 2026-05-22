@@ -13,11 +13,9 @@ const StockSchema = new mongoose.Schema({
     },
     price: {
         type: Number,
-        required: true
     },
     arabic_stock_fair_value: Number,
     arabic_stock_analyzers_fair_value: Number,
-    arabic_stock_id: String,
     arabic_stock_getter: String,
     lastUpdated: {
         type: Date,

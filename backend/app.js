@@ -9,13 +9,23 @@ dotenv.config();
 // Connect to Database
 connectDB();
 
+const cron = require('node-cron');
+const scraperService = require('./services/scraperService');
+
 const app = express();
+
+// Schedule daily scrape at 00:00
+cron.schedule('0 0 * * *', async () => {
+    console.log('Running daily scheduled scrape...');
+    await scraperService.scrapeAllArabicStocks();
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
+
 app.use('/api/stocks', require('./routes/stockRoutes'));
 
 // Health Check
