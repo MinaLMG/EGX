@@ -18,6 +18,7 @@ class Stock {
     this.bfPotential = 0.0,
     this.fundamentalPotential = 0.0,
     this.technicalPotential = 0.0,
+    this.arabstockScore = 0.0,
     this.rfpScore = 0.0,
     this.rspScore = 0.0,
     this.totalScore = 0.0,
@@ -41,6 +42,7 @@ class Stock {
       bfPotential: (json['bf_potential'] as num?)?.toDouble() ?? 0.0,
       fundamentalPotential: (json['fundamental_potential'] as num?)?.toDouble() ?? 0.0,
       technicalPotential: (json['technical_potential'] as num?)?.toDouble() ?? 0.0,
+      arabstockScore: (json['arabstock_score'] as num?)?.toDouble() ?? 0.0,
       rfpScore: (json['rfp_score'] as num?)?.toDouble() ?? 0.0,
       rspScore: (json['rsp_score'] as num?)?.toDouble() ?? 0.0,
       totalScore: (json['total_score'] as num?)?.toDouble() ?? 0.0,
@@ -50,6 +52,7 @@ class Stock {
   final double bfPotential;
   final double fundamentalPotential;
   final double technicalPotential;
+  final double arabstockScore;
   final double rfpScore;
   final double rspScore;
   final double totalScore;

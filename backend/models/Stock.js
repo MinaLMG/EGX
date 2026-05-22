@@ -27,6 +27,7 @@ const StockSchema = new mongoose.Schema({
     technical_potential: Number,
     rfp_score: { type: Number, default: 0 },
     rsp_score: { type: Number, default: 0 },
+    arabstock_score: { type: Number, default: 0 },
     total_score: { type: Number, default: 0 }
 });
 
