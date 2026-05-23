@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import '../models/stock.dart';
 import '../services/api_service.dart';
 import '../services/wallet_service.dart';
+import '../services/auth_service.dart';
 import 'match_screen.dart';
 import 'mubasher_matching_screen.dart';
+import 'admin_stock_matrix_screen.dart';
 
 class StockListScreen extends StatefulWidget {
   @override
@@ -13,15 +17,24 @@ class StockListScreen extends StatefulWidget {
 class _StockListScreenState extends State<StockListScreen> {
   final ApiService apiService = ApiService();
   final WalletService walletService = WalletService();
+  final AuthService authService = AuthService();
   late Future<List<Stock>> futureStocks;
   Set<String> walletTickers = {};
-  String _sortCriteria = 'total'; // total, i1, i2, i3, i4, rfp, rsp
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     futureStocks = apiService.fetchStocks();
     _loadWallet();
+    _checkAdmin();
+  }
+
+  Future<void> _checkAdmin() async {
+    final user = await authService.getUser();
+    if (user?.role == 'admin') {
+      setState(() => _isAdmin = true);
+    }
   }
 
   Future<void> _loadWallet() async {
@@ -29,7 +42,9 @@ class _StockListScreenState extends State<StockListScreen> {
       final wallet = await walletService.getWallet();
       final List items = wallet['wallet']?['items'] ?? [];
       setState(() {
-        walletTickers = items.map((i) => i['stock']['ticker'] as String).toSet();
+        walletTickers = items
+            .map((i) => i['stock']['ticker'] as String)
+            .toSet();
       });
     } catch (e) {
       // User might not be logged in or other error, ignore
@@ -43,11 +58,41 @@ class _StockListScreenState extends State<StockListScreen> {
     });
   }
 
+  Future<void> _exportToExcel() async {
+    try {
+      final bytes = await apiService.exportStocksExcel();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Excel generated. Select location to save.')),
+      );
+
+      String? outputPath = await FilePicker.saveFile(
+        dialogTitle: 'Save generated_fair.xlsx',
+        fileName: 'generated_fair.xlsx',
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+        bytes: Uint8List.fromList(bytes),
+      );
+
+      if (outputPath != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('File saved to $outputPath')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Export error: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('EGX Fair Values', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'EGX Fair Values',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.deepPurple,
         elevation: 0,
         actions: [
@@ -59,23 +104,23 @@ class _StockListScreenState extends State<StockListScreen> {
               MaterialPageRoute(builder: (context) => MubasherMatchingScreen()),
             ),
           ),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.sort),
-            onSelected: (String criteria) {
-              setState(() {
-                _sortCriteria = criteria;
-              });
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(value: 'total', child: Text('Sort by Total Score')),
-              PopupMenuItem<String>(value: 'i1', child: Text('Sort by BF Potential (i1)')),
-              PopupMenuItem<String>(value: 'i2', child: Text('Sort by Fundamental (i2)')),
-              PopupMenuItem<String>(value: 'i3', child: Text('Sort by Technical (i3)')),
-              PopupMenuItem<String>(value: 'i4', child: Text('Sort by ArabStock (i4)')),
-              PopupMenuItem<String>(value: 'rfp', child: Text('Sort by RFP Score')),
-              PopupMenuItem<String>(value: 'rsp', child: Text('Sort by RSP Score')),
-            ],
-          ),
+          if (_isAdmin)
+            IconButton(
+              icon: Icon(Icons.grid_on),
+              tooltip: 'Market Matrix',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AdminStockMatrixScreen(),
+                ),
+              ),
+            ),
+          if (_isAdmin)
+            IconButton(
+              icon: Icon(Icons.description), // Excel icon
+              tooltip: 'Export generated_fair.xlsx',
+              onPressed: _exportToExcel,
+            ),
           IconButton(icon: Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
@@ -100,24 +145,17 @@ class _StockListScreenState extends State<StockListScreen> {
             }
 
             final List<Stock> sortedStocks = List.from(snapshot.data!);
-            sortedStocks.sort((a, b) {
-              switch (_sortCriteria) {
-                case 'i1': return b.bfPotential.compareTo(a.bfPotential);
-                case 'i2': return b.fundamentalPotential.compareTo(a.fundamentalPotential);
-                case 'i3': return b.technicalPotential.compareTo(a.technicalPotential);
-                case 'i4': return b.arabstockScore.compareTo(a.arabstockScore);
-                case 'rfp': return b.rfpScore.compareTo(a.rfpScore);
-                case 'rsp': return b.rspScore.compareTo(a.rspScore);
-                default: return b.totalScore.compareTo(a.totalScore);
-              }
-            });
+            // Default sort by score descending
+            sortedStocks.sort((a, b) => b.totalScore.compareTo(a.totalScore));
 
             return ListView.builder(
               padding: EdgeInsets.all(16),
               itemCount: sortedStocks.length,
               itemBuilder: (context, index) {
                 final stock = sortedStocks[index];
-                final bool isMatched = stock.arabicStockGetter != null && stock.arabicStockGetter!.isNotEmpty;
+                final bool isMatched =
+                    stock.arabicStockGetter != null &&
+                    stock.arabicStockGetter!.isNotEmpty;
                 final bool isInWallet = walletTickers.contains(stock.ticker);
 
                 return Card(
@@ -125,26 +163,52 @@ class _StockListScreenState extends State<StockListScreen> {
                   margin: EdgeInsets.only(bottom: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15),
-                    side: isInWallet ? BorderSide(color: Colors.amber, width: 2) : BorderSide.none,
+                    side: isInWallet
+                        ? BorderSide(color: Colors.amber, width: 2)
+                        : BorderSide.none,
                   ),
                   elevation: isInWallet ? 8 : 4,
                   child: ExpansionTile(
                     leading: CircleAvatar(
-                      backgroundColor: isMatched ? Colors.green.shade100 : Colors.orange.shade100,
-                      child: Text(stock.ticker[0], style: TextStyle(color: isMatched ? Colors.green : Colors.orange, fontWeight: FontWeight.bold)),
+                      backgroundColor: isMatched
+                          ? Colors.green.shade100
+                          : Colors.orange.shade100,
+                      child: Text(
+                        stock.ticker[0],
+                        style: TextStyle(
+                          color: isMatched ? Colors.green : Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                     title: Row(
                       children: [
-                        Text(stock.ticker, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                        Text(
+                          stock.ticker,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
                         if (isInWallet) ...[
                           SizedBox(width: 8),
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.amber,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text('WALLET', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                            child: Text(
+                              'WALLET',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ],
                       ],
@@ -158,11 +222,13 @@ class _StockListScreenState extends State<StockListScreen> {
                           style: TextStyle(
                             color: Colors.deepPurple,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16
+                            fontSize: 16,
                           ),
                         ),
                         Icon(
-                          isMatched ? Icons.check_circle : Icons.warning_amber_rounded,
+                          isMatched
+                              ? Icons.check_circle
+                              : Icons.warning_amber_rounded,
                           color: isMatched ? Colors.green : Colors.orange,
                           size: 16,
                         ),
@@ -177,54 +243,108 @@ class _StockListScreenState extends State<StockListScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text('Current Price:', style: TextStyle(color: Colors.grey)),
-                                Text('${stock.price} EGP', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  'Current Price:',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                                Text(
+                                  '${stock.price} EGP',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
                               ],
                             ),
                             if (stock.arabicStockFairValue != null) ...[
                               SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Fair Value:', style: TextStyle(color: Colors.grey)),
-                                  Text('${stock.arabicStockFairValue} EGP', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                                  Text(
+                                    'Fair Value:',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                  Text(
+                                    '${stock.arabicStockFairValue} EGP',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
-                            if (stock.arabicStockAnalyzersFairValue != null) ...[
+                            if (stock.arabicStockAnalyzersFairValue !=
+                                null) ...[
                               SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Analyzers Fair Value:', style: TextStyle(color: Colors.grey)),
-                                  Text('${stock.arabicStockAnalyzersFairValue} EGP', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+                                  Text(
+                                    'Analyzers Fair Value:',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                  Text(
+                                    '${stock.arabicStockAnalyzersFairValue} EGP',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.teal,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
                             Divider(height: 32),
-                            Text('Recommendation Scores', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                            Text(
+                              'Recommendation Scores',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.deepPurple,
+                              ),
+                            ),
                             SizedBox(height: 8),
-                            _buildScoreRow('BF Potential (i1)', stock.bfPotential),
-                            _buildScoreRow('Fundamental (i2)', stock.fundamentalPotential),
-                            _buildScoreRow('Technical (i3)', stock.technicalPotential),
-                            _buildScoreRow('ArabStock (i4)', stock.arabstockScore),
+                            _buildScoreRow(
+                              'BF Potential (i1)',
+                              stock.bfPotential,
+                            ),
+                            _buildScoreRow(
+                              'Fundamental (i2)',
+                              stock.fundamentalPotential,
+                            ),
+                            _buildScoreRow(
+                              'Technical (i3)',
+                              stock.technicalPotential,
+                            ),
+                            _buildScoreRow(
+                              'ArabStock (i4)',
+                              stock.arabstockScore,
+                            ),
                             _buildScoreRow('RFP Score', stock.rfpScore),
                             _buildScoreRow('RSP Score', stock.rspScore),
                             SizedBox(height: 16),
                             Center(
                               child: ElevatedButton.icon(
                                 icon: Icon(Icons.link),
-                                label: Text(isMatched ? 'Change Match' : 'Match ArabicStock'),
+                                label: Text(
+                                  isMatched
+                                      ? 'Change Match'
+                                      : 'Match ArabicStock',
+                                ),
                                 onPressed: () async {
                                   await Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => MatchScreen(stock: stock)),
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          MatchScreen(stock: stock),
+                                    ),
                                   );
                                   _refresh();
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.deepPurple,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
                                 ),
                               ),
                             ),
@@ -249,7 +369,10 @@ class _StockListScreenState extends State<StockListScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: Colors.grey, fontSize: 13)),
-          Text(value.toStringAsFixed(2), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          Text(
+            value.toStringAsFixed(2),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          ),
         ],
       ),
     );

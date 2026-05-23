@@ -55,10 +55,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
             isScrollable: true,
             tabs: [
               Tab(text: 'BF Update'),
-              Tab(text: 'Fundamental'),
-              Tab(text: 'Technical'),
-              Tab(text: 'RFP'),
-              Tab(text: 'RSP'),
+              Tab(text: 'Fundamental (${_data?.fundamental.length ?? 0})'),
+              Tab(text: 'Technical (${_data?.technical.length ?? 0})'),
+              Tab(text: 'RFP (${_data?.rfp.length ?? 0})'),
+              Tab(text: 'RSP (${_data?.rsp.length ?? 0})'),
             ],
           ),
         ),
@@ -383,12 +383,15 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                 child: Column(
                   children: [
                     SizedBox(height: 12),
-                    if (_editingId != null) 
+                    if (_editingId != null)
                       Text(
-                        'Editing: ${_selectedStock?.ticker}', 
-                        style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold)
+                        'Editing: ${_selectedStock?.ticker}',
+                        style: TextStyle(
+                          color: Colors.deepPurple,
+                          fontWeight: FontWeight.bold,
+                        ),
                       )
-                    else 
+                    else
                       Autocomplete<Stock>(
                         displayStringForOption: (Stock option) =>
                             '${option.ticker} - ${option.name ?? ""}',
@@ -434,7 +437,7 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                     SizedBox(height: 16),
                     Row(
                       children: [
-                        if (_editingId != null) 
+                        if (_editingId != null)
                           Expanded(
                             child: OutlinedButton(
                               onPressed: _clearForm,
@@ -444,12 +447,19 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                         if (_editingId != null) SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: (_isSaving || (_editingId == null && _selectedStock == null))
+                            onPressed:
+                                (_isSaving ||
+                                    (_editingId == null &&
+                                        _selectedStock == null))
                                 ? null
                                 : _save,
-                            child: Text(_editingId == null ? 'Add Call' : 'Update Call'),
+                            child: Text(
+                              _editingId == null ? 'Add Call' : 'Update Call',
+                            ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _editingId == null ? Colors.deepPurple : Colors.green,
+                              backgroundColor: _editingId == null
+                                  ? Colors.deepPurple
+                                  : Colors.green,
                               foregroundColor: Colors.white,
                               fixedSize: Size.fromHeight(45),
                             ),

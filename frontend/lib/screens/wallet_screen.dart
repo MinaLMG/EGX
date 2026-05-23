@@ -4,6 +4,11 @@ import '../services/api_service.dart';
 import '../models/stock.dart';
 
 class WalletScreen extends StatefulWidget {
+  final String? targetUserId;
+  final String? targetUserName;
+
+  WalletScreen({this.targetUserId, this.targetUserName});
+
   @override
   _WalletScreenState createState() => _WalletScreenState();
 }
@@ -21,6 +26,14 @@ class _WalletScreenState extends State<WalletScreen> {
   final _factorController = TextEditingController();
   final _totalOverrideController = TextEditingController();
   final _qtyController = TextEditingController();
+
+  // Profit controllers
+  final _valController = TextEditingController();
+  final _manualProfitValueController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+  String _targetType = 'deposit';
+  String _profitMode = 'automatic';
+
   Stock? _selectedStock;
   String _mode = 'automatic';
   String _sortCriteria = 'score'; // score (default), supposed, real, deviation
@@ -35,7 +48,9 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final wallet = await _walletService.getWallet();
+      final wallet = await _walletService.getWallet(
+        targetUserId: widget.targetUserId,
+      );
       final stocks = await _apiService.fetchStocks();
       setState(() {
         _walletData = wallet;
@@ -44,15 +59,21 @@ class _WalletScreenState extends State<WalletScreen> {
         // Pre-fill settings
         if (wallet['wallet'] != null) {
           _cashController.text = (wallet['wallet']['cash'] ?? 0).toString();
-          _factorController.text = (wallet['wallet']['factor'] ?? 0.6).toString();
+          _factorController.text = (wallet['wallet']['factor'] ?? 0.6)
+              .toString();
           _mode = wallet['wallet']['mode'] ?? 'automatic';
-          _totalOverrideController.text = (wallet['wallet']['manualTotalOverride'] ?? "").toString();
+          _totalOverrideController.text =
+              (wallet['wallet']['manualTotalOverride'] ?? "").toString();
+
+          _profitMode = wallet['wallet']['profitMode'] ?? 'automatic';
+          _manualProfitValueController.text =
+              (wallet['wallet']['manualProfitValue'] ?? "").toString();
         }
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
       setState(() => _isLoading = false);
     }
   }
@@ -60,12 +81,17 @@ class _WalletScreenState extends State<WalletScreen> {
   Future<void> _addStock() async {
     if (_selectedStock == null || _qtyController.text.isEmpty) return;
     try {
-      await _walletService.updateItem(_selectedStock!.ticker, int.parse(_qtyController.text));
+      await _walletService.updateItem(
+        _selectedStock!.ticker,
+        int.parse(_qtyController.text),
+      );
       _qtyController.clear();
       setState(() => _selectedStock = null);
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -73,13 +99,18 @@ class _WalletScreenState extends State<WalletScreen> {
     try {
       // Find current qty
       final items = _walletData?['wallet']?['items'] as List?;
-      final item = items?.firstWhere((i) => i['stock']['ticker'] == ticker, orElse: () => null);
+      final item = items?.firstWhere(
+        (i) => i['stock']['ticker'] == ticker,
+        orElse: () => null,
+      );
       int qty = item != null ? item['quantity'] : 0;
-      
+
       await _walletService.updateItem(ticker, qty, manualPrice: price);
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -88,7 +119,9 @@ class _WalletScreenState extends State<WalletScreen> {
       await _walletService.updateItem(ticker, 0);
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -99,45 +132,109 @@ class _WalletScreenState extends State<WalletScreen> {
         factor: double.tryParse(_factorController.text),
         mode: _mode,
         manualTotalOverride: double.tryParse(_totalOverrideController.text),
+        profitMode: _profitMode,
+        manualProfitValue: double.tryParse(_manualProfitValueController.text),
       );
       await _loadData();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Settings saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Settings saved')));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  // Profit Actions
+  Future<void> _saveTransaction({String? id}) async {
+    try {
+      final val = double.tryParse(_valController.text) ?? 0;
+      if (id == null) {
+        await _walletService.addTransaction(
+          date: _selectedDate,
+          value: val,
+          type: _targetType,
+          targetUserId: widget.targetUserId,
+        );
+      } else {
+        await _walletService.updateTransaction(
+          id: id,
+          date: _selectedDate,
+          value: val,
+          type: _targetType,
+          targetUserId: widget.targetUserId,
+        );
+      }
+      _valController.clear();
+      await _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  Future<void> _deleteTransaction(String id) async {
+    try {
+      await _walletService.deleteTransaction(
+        id,
+        targetUserId: widget.targetUserId,
+      );
+      await _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Color _suggestionColor(String suggestion) {
     switch (suggestion) {
-      case 'Buy': return Colors.green;
-      case 'Sell': return Colors.red;
-      default: return Colors.grey;
+      case 'Buy':
+        return Colors.green;
+      case 'Sell':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _suggestionIcon(String suggestion) {
     switch (suggestion) {
-      case 'Buy': return Icons.arrow_upward;
-      case 'Sell': return Icons.arrow_downward;
-      default: return Icons.pause;
+      case 'Buy':
+        return Icons.arrow_upward;
+      case 'Sell':
+        return Icons.arrow_downward;
+      default:
+        return Icons.pause;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = widget.targetUserName != null
+        ? 'Simulating: ${widget.targetUserName}'
+        : 'My Wallet';
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('My Wallet'),
+          title: Text(title, style: TextStyle(fontSize: 18)),
           backgroundColor: Colors.deepPurple,
           bottom: TabBar(
+            isScrollable: true,
             tabs: [
-              Tab(text: 'My Portfolio', icon: Icon(Icons.account_balance_wallet)),
-              Tab(text: 'Pending Actions', icon: Icon(Icons.notifications_active)),
-              Tab(text: 'Next Moves', icon: Icon(Icons.trending_up)),
+              Tab(
+                text: 'Portfolio',
+                icon: Icon(Icons.account_balance_wallet, size: 20),
+              ),
+              Tab(
+                text: 'Pending',
+                icon: Icon(Icons.notifications_active, size: 20),
+              ),
+              Tab(text: 'Next', icon: Icon(Icons.trending_up, size: 20)),
+              Tab(text: 'Profit', icon: Icon(Icons.calculate, size: 20)),
             ],
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white60,
@@ -154,6 +251,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   _buildPortfolioTab(),
                   _buildActionsTab(),
                   _buildPredictionsTab(),
+                  _buildProfitTab(),
                 ],
               ),
       ),
@@ -173,7 +271,14 @@ class _WalletScreenState extends State<WalletScreen> {
           _buildAddStockSection(),
           SizedBox(height: 16),
           Divider(),
-          Text('Full Portfolio', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(
+            'Full Portfolio',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
           SizedBox(height: 8),
           _buildAnalysisList(onlyPending: false),
         ],
@@ -182,16 +287,29 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildActionsTab() {
-    final hasActions = _walletData?['analysis'] != null &&
-        (_walletData!['analysis'] as List).any((item) => item['suggestion'] != 'Hold');
+    final hasActions =
+        _walletData?['analysis'] != null &&
+        (_walletData!['analysis'] as List).any(
+          (item) => item['suggestion'] != 'Hold',
+        );
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Pending Decisions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
-          Text('Stocks requiring rebalancing (±10% deviation)', style: TextStyle(color: Colors.black54, fontSize: 13)),
+          Text(
+            'Pending Decisions',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple,
+            ),
+          ),
+          Text(
+            'Stocks requiring rebalancing (±10% deviation)',
+            style: TextStyle(color: Colors.black54, fontSize: 13),
+          ),
           SizedBox(height: 16),
           if (hasActions)
             _buildAnalysisList(onlyPending: true)
@@ -201,10 +319,24 @@ class _WalletScreenState extends State<WalletScreen> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.check_circle_outline, size: 64, color: Colors.green.shade200),
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 64,
+                      color: Colors.green.shade200,
+                    ),
                     SizedBox(height: 16),
-                    Text('Your portfolio is balanced!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87)),
-                    Text('No pending Buy/Sell actions.', style: TextStyle(color: Colors.black54)),
+                    Text(
+                      'Your portfolio is balanced!',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      'No pending Buy/Sell actions.',
+                      style: TextStyle(color: Colors.black54),
+                    ),
                   ],
                 ),
               ),
@@ -216,7 +348,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildPredictionsTab() {
     if (_walletData?['analysis'] == null) return SizedBox.shrink();
-    
+
     // Filter to only 'Hold' stocks (less than 10% diff)
     final List items = (_walletData!['analysis'] as List)
         .where((i) => i['suggestion'] == 'Hold')
@@ -224,8 +356,12 @@ class _WalletScreenState extends State<WalletScreen> {
 
     // Sort by absolute deviation percentage (real - supposed) / supposed
     items.sort((a, b) {
-      final devA = ((a['realMarketValue'] - a['supposedValue']) / a['supposedValue']).abs();
-      final devB = ((b['realMarketValue'] - b['supposedValue']) / b['supposedValue']).abs();
+      final devA =
+          ((a['realMarketValue'] - a['supposedValue']) / a['supposedValue'])
+              .abs();
+      final devB =
+          ((b['realMarketValue'] - b['supposedValue']) / b['supposedValue'])
+              .abs();
       return devB.compareTo(devA);
     });
 
@@ -237,18 +373,31 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Next Transactions', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
-          Text('Predicted targets based on current trends', style: TextStyle(color: Colors.black54, fontSize: 13)),
+          Text(
+            'Next Transactions',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple,
+            ),
+          ),
+          Text(
+            'Predicted targets based on current trends',
+            style: TextStyle(color: Colors.black54, fontSize: 13),
+          ),
           SizedBox(height: 16),
           if (top3.isEmpty)
-             _emptyState('No stocks in wallet to predict.')
+            _emptyState('No stocks in wallet to predict.')
           else
             ...top3.map((item) {
               final qty = item['quantity'] as num;
               if (qty == 0) return SizedBox.shrink();
 
-              final isSellingSide = item['realMarketValue'] > item['supposedValue'];
-              final targetFactor = isSellingSide ? (1.1 + margin) : (0.9 - margin);
+              final isSellingSide =
+                  item['realMarketValue'] > item['supposedValue'];
+              final targetFactor = isSellingSide
+                  ? (1.1 + margin)
+                  : (0.9 - margin);
               final targetPrice = (item['supposedValue'] * targetFactor) / qty;
               final tradeValue = item['supposedValue'] * 0.1;
               final currentPrice = item['currentPrice'] as num;
@@ -256,7 +405,9 @@ class _WalletScreenState extends State<WalletScreen> {
               return Card(
                 elevation: 4,
                 margin: EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Padding(
                   padding: EdgeInsets.all(16),
                   child: Column(
@@ -265,19 +416,38 @@ class _WalletScreenState extends State<WalletScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${item['ticker']}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                          Text(
+                            '${item['ticker']}',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
                           _trendBadge(isSellingSide),
                         ],
                       ),
                       Divider(),
-                      _predictRow('Trigger Price', 'EGP ${targetPrice.toStringAsFixed(2)}', isPrimary: true),
-                      _predictRow('Current Price', 'EGP ${currentPrice.toStringAsFixed(2)}'),
-                      _predictRow('Expected Trade Value', 'EGP ${tradeValue.toStringAsFixed(0)}'),
+                      _predictRow(
+                        'Trigger Price',
+                        'EGP ${targetPrice.toStringAsFixed(2)}',
+                        isPrimary: true,
+                      ),
+                      _predictRow(
+                        'Current Price',
+                        'EGP ${currentPrice.toStringAsFixed(2)}',
+                      ),
+                      _predictRow(
+                        'Expected Trade Value',
+                        'EGP ${tradeValue.toStringAsFixed(0)}',
+                      ),
                       SizedBox(height: 8),
                       LinearProgressIndicator(
                         value: (currentPrice / targetPrice).clamp(0.0, 1.0),
                         backgroundColor: Colors.grey.shade200,
-                        color: isSellingSide ? Colors.red.shade300 : Colors.green.shade300,
+                        color: isSellingSide
+                            ? Colors.red.shade300
+                            : Colors.green.shade300,
                         minHeight: 8,
                       ),
                       Padding(
@@ -303,11 +473,17 @@ class _WalletScreenState extends State<WalletScreen> {
       decoration: BoxDecoration(
         color: isSell ? Colors.red.shade50 : Colors.green.shade50,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: isSell ? Colors.red.shade200 : Colors.green.shade200),
+        border: Border.all(
+          color: isSell ? Colors.red.shade200 : Colors.green.shade200,
+        ),
       ),
       child: Text(
         isSell ? 'SELL TREND' : 'BUY TREND',
-        style: TextStyle(color: isSell ? Colors.red : Colors.green, fontWeight: FontWeight.bold, fontSize: 10),
+        style: TextStyle(
+          color: isSell ? Colors.red : Colors.green,
+          fontWeight: FontWeight.bold,
+          fontSize: 10,
+        ),
       ),
     );
   }
@@ -319,11 +495,14 @@ class _WalletScreenState extends State<WalletScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: Colors.black87, fontSize: 14)),
-          Text(value, style: TextStyle(
-            fontSize: isPrimary ? 18 : 14, 
-            fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
-            color: isPrimary ? Colors.black87 : Colors.black54,
-          )),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isPrimary ? 18 : 14,
+              fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
+              color: isPrimary ? Colors.black87 : Colors.black54,
+            ),
+          ),
         ],
       ),
     );
@@ -344,6 +523,298 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  Widget _buildProfitTab() {
+    final profit = _walletData?['profit'];
+    final trans = (_walletData?['wallet']?['transactions'] as List?) ?? [];
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Financial Performance',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple,
+            ),
+          ),
+          SizedBox(height: 16),
+          _buildProfitSummary(profit),
+          SizedBox(height: 24),
+          _buildProfitSettingsSection(),
+          SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Transactions',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showTransactionDialog(),
+                icon: Icon(Icons.add, size: 18),
+                label: Text('New'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 12),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          _buildTransactionList(trans),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfitSettingsSection() {
+    return ExpansionTile(
+      title: Text('Revenue Calculation Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text('Current Value Source: ${_profitMode.toUpperCase()}'),
+      leading: Icon(Icons.tune, color: Colors.deepPurple),
+      children: [
+        Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            children: [
+              DropdownButtonFormField<String>(
+                value: _profitMode,
+                decoration: InputDecoration(labelText: 'Calculation Source', border: OutlineInputBorder()),
+                items: [
+                  DropdownMenuItem(value: 'automatic', child: Text('Automatic (Wallet + Stocks)')),
+                  DropdownMenuItem(value: 'manual', child: Text('Manual (User Entered Value)')),
+                ],
+                onChanged: (val) => setState(() => _profitMode = val!),
+              ),
+              if (_profitMode == 'manual') ...[
+                SizedBox(height: 12),
+                TextField(
+                  controller: _manualProfitValueController,
+                  decoration: InputDecoration(labelText: 'Custom Total Wallet Value (EGP)', border: OutlineInputBorder()),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+              SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: _saveSettings,
+                icon: Icon(Icons.save),
+                label: Text('Save Profit Settings'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 45),
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfitSummary(Map<String, dynamic>? profit) {
+    if (profit == null) return SizedBox.shrink();
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.6,
+      children: [
+        _infoCard(
+          'Effective Value',
+          'EGP ${_fmt(profit['walletEffectiveValue'])}',
+          Icons.account_balance,
+        ),
+        _infoCard(
+          'Net Revenue',
+          'EGP ${_fmt(profit['revenue'])}',
+          Icons.monetization_on,
+          color: (profit['revenue'] ?? 0) >= 0 ? Colors.green : Colors.red,
+        ),
+        _infoCard(
+          'Revenue %',
+          '${((profit['revenuePercentage'] ?? 0) * 100).toStringAsFixed(2)}%',
+          Icons.percent,
+        ),
+        _infoCard(
+          'Daily Ratio',
+          '${profit['dailyRatio']?.toStringAsFixed(6)}',
+          Icons.today,
+        ),
+        _infoCard(
+          'Yearly Return',
+          '${((profit['yearlyRevenue'] ?? 0) * 100).toStringAsFixed(1)}%',
+          Icons.calendar_today,
+          color: Colors.orange,
+        ),
+        _infoCard(
+          'Total Duration',
+          '${(profit['totalDuration'] ?? 0).toInt()} Days',
+          Icons.timer,
+        ),
+      ],
+    );
+  }
+
+  Widget _infoCard(String label, String value, IconData icon, {Color? color}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: color ?? Colors.deepPurple),
+            SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 10, color: Colors.grey)),
+            FittedBox(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionList(List trans) {
+    if (trans.isEmpty) return _emptyState('No transactions yet.');
+    // Sort transactions by date desc
+    final sorted = List.from(trans)
+      ..sort((a, b) => b['date'].compareTo(a['date']));
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: sorted.length,
+      itemBuilder: (ctx, i) {
+        final t = sorted[i];
+        final isDep = t['type'] == 'deposit';
+        return Card(
+          margin: EdgeInsets.symmetric(vertical: 4),
+          child: ListTile(
+            leading: Icon(
+              isDep ? Icons.add_circle : Icons.remove_circle,
+              color: isDep ? Colors.green : Colors.red,
+            ),
+            title: Text(
+              'EGP ${t['value']}',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              '${DateTime.parse(t['date']).toLocal().toString().split(' ')[0]} - ${t['type'].toUpperCase()}',
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.edit, size: 18),
+                  onPressed: () => _showTransactionDialog(t: t),
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete, size: 18),
+                  onPressed: () => _deleteTransaction(t['_id']),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showTransactionDialog({Map? t}) {
+    if (t != null) {
+      _valController.text = t['value'].toString();
+      _selectedDate = DateTime.parse(t['date']).toLocal();
+      _targetType = t['type'];
+    } else {
+      _valController.clear();
+      _selectedDate = DateTime.now();
+      _targetType = 'deposit';
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocalState) {
+          return AlertDialog(
+            title: Text(t == null ? 'Add Transaction' : 'Edit Transaction'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _targetType,
+                  items: [
+                    DropdownMenuItem(value: 'deposit', child: Text('Deposit')),
+                    DropdownMenuItem(
+                      value: 'withdrawal',
+                      child: Text('Withdrawal'),
+                    ),
+                  ],
+                  onChanged: (v) => setLocalState(() => _targetType = v!),
+                  decoration: InputDecoration(labelText: 'Type'),
+                ),
+                TextField(
+                  controller: _valController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: 'Value (EGP)'),
+                ),
+                ListTile(
+                  title: Text(
+                    'Date: ${_selectedDate.toString().split(' ')[0]}',
+                  ),
+                  trailing: Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (d != null) setLocalState(() => _selectedDate = d);
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _saveTransaction(id: t?['_id']);
+                },
+                child: Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String _fmt(dynamic val) {
+    if (val == null) return "0.00";
+    return (val as num).toStringAsFixed(0);
+  }
+
   Widget _buildSummaryCard() {
     if (_walletData?['totalValue'] == null) return SizedBox.shrink();
     return Card(
@@ -360,19 +831,11 @@ class _WalletScreenState extends State<WalletScreen> {
                   Text('Total Value', style: TextStyle(color: Colors.black54)),
                   Text(
                     'EGP ${((_walletData?['totalValue'] ?? 0) as num).toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.deepPurple),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Diff Value', style: TextStyle(color: Colors.black54)),
-                  Text(
-                    'EGP ${((_walletData?['diffValue'] ?? 0) as num).toStringAsFixed(2)}',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
+                    ),
                   ),
                 ],
               ),
@@ -385,7 +848,10 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildSettingsSection() {
     return ExpansionTile(
-      title: Text('Wallet Settings', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+      title: Text(
+        'Wallet Settings',
+        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+      ),
       leading: Icon(Icons.settings, color: Colors.deepPurple),
       children: [
         Padding(
@@ -394,10 +860,19 @@ class _WalletScreenState extends State<WalletScreen> {
             children: [
               DropdownButtonFormField<String>(
                 value: _mode,
-                decoration: InputDecoration(labelText: 'Calculation Mode', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Calculation Mode',
+                  border: OutlineInputBorder(),
+                ),
                 items: [
-                  DropdownMenuItem(value: 'automatic', child: Text('Automatic (Market Prices)')),
-                  DropdownMenuItem(value: 'manual', child: Text('Manual (Custom Prices)')),
+                  DropdownMenuItem(
+                    value: 'automatic',
+                    child: Text('Automatic (Market Prices)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'manual',
+                    child: Text('Manual (Custom Prices)'),
+                  ),
                 ],
                 onChanged: (val) => setState(() => _mode = val!),
               ),
@@ -405,20 +880,29 @@ class _WalletScreenState extends State<WalletScreen> {
               if (_mode == 'manual') ...[
                 TextField(
                   controller: _totalOverrideController,
-                  decoration: InputDecoration(labelText: 'Manual Total Portfolio Value (EGP)', border: OutlineInputBorder()),
+                  decoration: InputDecoration(
+                    labelText: 'Manual Total Portfolio Value (EGP)',
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
                 ),
                 SizedBox(height: 12),
               ],
               TextField(
                 controller: _cashController,
-                decoration: InputDecoration(labelText: 'Cash (EGP)', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Cash (EGP)',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 12),
               TextField(
                 controller: _factorController,
-                decoration: InputDecoration(labelText: 'Factor (default 0.6)', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Factor (default 0.6)',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 12),
@@ -441,7 +925,10 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildAddStockSection() {
     return ExpansionTile(
-      title: Text('Add Stock to Wallet', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
+      title: Text(
+        'Add Stock to Wallet',
+        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+      ),
       leading: Icon(Icons.add_circle_outline, color: Colors.green),
       children: [
         Padding(
@@ -449,12 +936,17 @@ class _WalletScreenState extends State<WalletScreen> {
           child: Column(
             children: [
               Autocomplete<Stock>(
-                displayStringForOption: (Stock s) => '${s.ticker} - ${s.name ?? ""}',
+                displayStringForOption: (Stock s) =>
+                    '${s.ticker} - ${s.name ?? ""}',
                 optionsBuilder: (TextEditingValue val) {
                   if (val.text.isEmpty) return Iterable<Stock>.empty();
-                  return _allStocks.where((s) =>
-                      s.ticker.contains(val.text.toUpperCase()) ||
-                      (s.name?.toUpperCase() ?? '').contains(val.text.toUpperCase()));
+                  return _allStocks.where(
+                    (s) =>
+                        s.ticker.contains(val.text.toUpperCase()) ||
+                        (s.name?.toUpperCase() ?? '').contains(
+                          val.text.toUpperCase(),
+                        ),
+                  );
                 },
                 onSelected: (Stock s) => setState(() => _selectedStock = s),
                 fieldViewBuilder: (ctx, ctrl, focus, onSubmit) {
@@ -472,7 +964,10 @@ class _WalletScreenState extends State<WalletScreen> {
               SizedBox(height: 12),
               TextField(
                 controller: _qtyController,
-                decoration: InputDecoration(labelText: 'Quantity (Shares)', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Quantity (Shares)',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 12),
@@ -511,8 +1006,12 @@ class _WalletScreenState extends State<WalletScreen> {
           valB = b['realMarketValue'];
           break;
         case 'deviation':
-          valA = ((a['realMarketValue'] - a['supposedValue']) / a['supposedValue']).abs();
-          valB = ((b['realMarketValue'] - b['supposedValue']) / b['supposedValue']).abs();
+          valA =
+              ((a['realMarketValue'] - a['supposedValue']) / a['supposedValue'])
+                  .abs();
+          valB =
+              ((b['realMarketValue'] - b['supposedValue']) / b['supposedValue'])
+                  .abs();
           break;
         default: // score (backend default order)
           return 0; // Keep current order if score selected
@@ -520,7 +1019,9 @@ class _WalletScreenState extends State<WalletScreen> {
       return _isAscending ? valA.compareTo(valB) : valB.compareTo(valA);
     });
 
-    final filteredItems = onlyPending ? items.where((i) => i['suggestion'] != 'Hold').toList() : items;
+    final filteredItems = onlyPending
+        ? items.where((i) => i['suggestion'] != 'Hold').toList()
+        : items;
 
     if (filteredItems.isEmpty && !onlyPending) {
       return _emptyState('Your wallet is empty.');
@@ -537,7 +1038,10 @@ class _WalletScreenState extends State<WalletScreen> {
             final item = filteredItems[index];
             final suggestion = item['suggestion'] ?? 'Hold';
             final gap = (item['gap'] as num?) ?? 0;
-            final deviation = ((item['realMarketValue'] - item['supposedValue']) / item['supposedValue']) * 100;
+            final deviation =
+                ((item['realMarketValue'] - item['supposedValue']) /
+                    item['supposedValue']) *
+                100;
 
             return Card(
               margin: EdgeInsets.symmetric(vertical: 4),
@@ -552,14 +1056,25 @@ class _WalletScreenState extends State<WalletScreen> {
                 isThreeLine: true,
                 onTap: () => _showManageModal(item),
                 leading: CircleAvatar(
-                  backgroundColor: _suggestionColor(suggestion).withOpacity(0.15),
-                  child: Text('${index + 1}', style: TextStyle(fontWeight: FontWeight.bold, color: _suggestionColor(suggestion))),
+                  backgroundColor: _suggestionColor(
+                    suggestion,
+                  ).withOpacity(0.15),
+                  child: Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: _suggestionColor(suggestion),
+                    ),
+                  ),
                 ),
                 title: Row(
                   children: [
                     Text(
                       '${item['ticker']}',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
                     ),
                     SizedBox(width: 8),
                     Text(
@@ -567,19 +1082,28 @@ class _WalletScreenState extends State<WalletScreen> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: (item['realMarketValue'] > item['supposedValue']) ? Colors.red : Colors.green,
+                        color: (item['realMarketValue'] > item['supposedValue'])
+                            ? Colors.red
+                            : Colors.green,
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(left: 8.0),
-                      child: Icon(Icons.settings, size: 14, color: Colors.blue.withOpacity(0.5)),
+                      child: Icon(
+                        Icons.settings,
+                        size: 14,
+                        color: Colors.blue.withOpacity(0.5),
+                      ),
                     ),
                   ],
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Qty: ${item['quantity']}  ×  EGP ${(item['currentPrice'] as num).toStringAsFixed(2)}', style: TextStyle(color: Colors.black87)),
+                    Text(
+                      'Qty: ${item['quantity']}  ×  EGP ${(item['currentPrice'] as num).toStringAsFixed(2)}',
+                      style: TextStyle(color: Colors.black87),
+                    ),
                     Text(
                       'Real: EGP ${(item['realMarketValue'] as num).toStringAsFixed(0)}  →  Supposed: EGP ${(item['supposedValue'] as num).toStringAsFixed(0)}',
                       style: TextStyle(fontSize: 12, color: Colors.black54),
@@ -592,9 +1116,23 @@ class _WalletScreenState extends State<WalletScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(_suggestionIcon(suggestion), color: _suggestionColor(suggestion), size: 20),
-                      Text(suggestion, style: TextStyle(color: _suggestionColor(suggestion), fontWeight: FontWeight.bold, fontSize: 10)),
-                      Text('EGP ${gap.toStringAsFixed(0)}', style: TextStyle(fontSize: 9, color: Colors.black54)),
+                      Icon(
+                        _suggestionIcon(suggestion),
+                        color: _suggestionColor(suggestion),
+                        size: 20,
+                      ),
+                      Text(
+                        suggestion,
+                        style: TextStyle(
+                          color: _suggestionColor(suggestion),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        'EGP ${gap.toStringAsFixed(0)}',
+                        style: TextStyle(fontSize: 9, color: Colors.black54),
+                      ),
                     ],
                   ),
                 ),
@@ -611,14 +1149,20 @@ class _WalletScreenState extends State<WalletScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Text('Sort by:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+          Text(
+            'Sort by:',
+            style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
           SizedBox(width: 8),
           _sortChip('Supposed', 'supposed'),
           _sortChip('Real', 'real'),
           _sortChip('% Diff', 'deviation'),
           Spacer(),
           IconButton(
-            icon: Icon(_isAscending ? Icons.arrow_upward : Icons.arrow_downward, size: 18),
+            icon: Icon(
+              _isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+              size: 18,
+            ),
             onPressed: () => setState(() => _isAscending = !_isAscending),
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(),
@@ -639,21 +1183,36 @@ class _WalletScreenState extends State<WalletScreen> {
         decoration: BoxDecoration(
           color: isSelected ? Colors.deepPurple.shade100 : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? Colors.deepPurple : Colors.transparent),
+          border: Border.all(
+            color: isSelected ? Colors.deepPurple : Colors.transparent,
+          ),
         ),
-        child: Text(label, style: TextStyle(fontSize: 11, color: isSelected ? Colors.deepPurple : Colors.black54, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: isSelected ? Colors.deepPurple : Colors.black54,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }
 
   void _showManageModal(Map<String, dynamic> item) {
-    final qtyController = TextEditingController(text: item['quantity'].toString());
-    final priceController = TextEditingController(text: item['currentPrice'].toString());
+    final qtyController = TextEditingController(
+      text: item['quantity'].toString(),
+    );
+    final priceController = TextEditingController(
+      text: item['currentPrice'].toString(),
+    );
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(ctx).viewInsets.bottom,
@@ -668,21 +1227,33 @@ class _WalletScreenState extends State<WalletScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Manage ${item['ticker']}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                Text(
+                  'Manage ${item['ticker']}',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
               ],
             ),
             SizedBox(height: 24),
             TextField(
               controller: qtyController,
-              decoration: InputDecoration(labelText: 'Quantity (Shares)', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                labelText: 'Quantity (Shares)',
+                border: OutlineInputBorder(),
+              ),
               keyboardType: TextInputType.number,
             ),
             if (_mode == 'manual') ...[
               SizedBox(height: 16),
               TextField(
                 controller: priceController,
-                decoration: InputDecoration(labelText: 'Custom Price (EGP)', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Custom Price (EGP)',
+                  border: OutlineInputBorder(),
+                ),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -715,8 +1286,13 @@ class _WalletScreenState extends State<WalletScreen> {
                 _removeStock(item['ticker']);
               },
               icon: Icon(Icons.delete, color: Colors.red),
-              label: Text('Remove From Wallet', style: TextStyle(color: Colors.red)),
-              style: TextButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+              label: Text(
+                'Remove From Wallet',
+                style: TextStyle(color: Colors.red),
+              ),
+              style: TextButton.styleFrom(
+                minimumSize: Size(double.infinity, 50),
+              ),
             ),
             SizedBox(height: 24),
           ],

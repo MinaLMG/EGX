@@ -19,10 +19,10 @@ exports.recalculateScores = async (req, res) => {
 exports.updateBfPrices = async (req, res) => {
     try {
         const { bfValues } = req.body; // Array of { ticker, value }
-        
+
         // 1. Clear existing
         await BFValue.deleteMany({});
-        
+
         // 2. Resolve tickers to stock IDs
         const updates = [];
         for (const item of bfValues) {
@@ -38,10 +38,10 @@ exports.updateBfPrices = async (req, res) => {
         if (updates.length > 0) {
             await BFValue.insertMany(updates);
         }
-        
+
         // 4. Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         res.json({ message: `Successfully updated ${updates.length} BF values.` });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -56,7 +56,7 @@ exports.getRecommendations = async (req, res) => {
         const rsp = await RSPRecommendation.find().populate('stock');
         const fundamental = await FundamentalRecommendation.find().populate('stock');
         const technical = await TechnicalRecommendation.find().populate('stock');
-        
+
         res.json({
             bfValues,
             rfp,
@@ -75,16 +75,16 @@ exports.updateFundamental = async (req, res) => {
         const { ticker, target } = req.body;
         const stock = await Stock.findOne({ ticker: ticker.toUpperCase() });
         if (!stock) return res.status(404).json({ message: 'Stock not found' });
-        
+
         const recommendation = await FundamentalRecommendation.findOneAndUpdate(
             { stock: stock._id },
             { target },
             { upsert: true, new: true }
         ).populate('stock');
-        
+
         // Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         res.json(recommendation);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -94,10 +94,10 @@ exports.updateFundamental = async (req, res) => {
 exports.deleteFundamental = async (req, res) => {
     try {
         await FundamentalRecommendation.findByIdAndDelete(req.params.id);
-        
+
         // Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         res.json({ message: 'Deleted' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -110,7 +110,7 @@ exports.updateTechnical = async (req, res) => {
         const { ticker, target, notes } = req.body;
         const stock = await Stock.findOne({ ticker: ticker.toUpperCase() });
         if (!stock) return res.status(404).json({ message: 'Stock not found' });
-        
+
         const recommendation = new TechnicalRecommendation({
             stock: stock._id,
             target,
@@ -118,10 +118,10 @@ exports.updateTechnical = async (req, res) => {
         });
         await recommendation.save();
         const populatedRec = await TechnicalRecommendation.findById(recommendation._id).populate('stock');
-        
+
         // Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         res.json(populatedRec);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -136,10 +136,10 @@ exports.updateTechnicalById = async (req, res) => {
             { target, notes },
             { new: true }
         ).populate('stock');
-        
+
         // Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         res.json(recommendation);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -149,10 +149,10 @@ exports.updateTechnicalById = async (req, res) => {
 exports.deleteTechnical = async (req, res) => {
     try {
         await TechnicalRecommendation.findByIdAndDelete(req.params.id);
-        
+
         // Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         res.json({ message: 'Deleted' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -164,9 +164,9 @@ exports.updateRFP = async (req, res) => {
     try {
         const { stocks } = req.body; // Array of { ticker, score }
         // For RFP, user said internal score is always 1, but we'll accept what's passed or default to 1
-        
+
         await RFPRecommendation.deleteMany({});
-        
+
         const updates = [];
         for (const item of stocks) {
             const stock = await Stock.findOne({ ticker: item.ticker.toUpperCase() });
@@ -177,14 +177,14 @@ exports.updateRFP = async (req, res) => {
                 });
             }
         }
-        
+
         if (updates.length > 0) {
             await RFPRecommendation.insertMany(updates);
         }
-        
+
         // Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         const result = await RFPRecommendation.find().populate('stock');
         res.json(result);
     } catch (error) {
@@ -196,9 +196,9 @@ exports.updateRFP = async (req, res) => {
 exports.updateRSP = async (req, res) => {
     try {
         const { stocks } = req.body; // Array of { ticker, score }
-        
+
         await RSPRecommendation.deleteMany({});
-        
+
         const updates = [];
         for (const item of stocks) {
             const stock = await Stock.findOne({ ticker: item.ticker.toUpperCase() });
@@ -209,14 +209,14 @@ exports.updateRSP = async (req, res) => {
                 });
             }
         }
-        
+
         if (updates.length > 0) {
             await RSPRecommendation.insertMany(updates);
         }
-        
+
         // Recalculate scores
         await ScoringService.calculateAllScores();
-        
+
         const result = await RSPRecommendation.find().populate('stock');
         res.json(result);
     } catch (error) {

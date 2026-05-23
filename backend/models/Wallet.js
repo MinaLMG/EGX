@@ -38,9 +38,23 @@ const WalletSchema = new mongoose.Schema({
         default: 'automatic'
     },
     manualTotalOverride: {
-        type: Number, // For real-time price mode
+        type: Number, // For portfolio rebalancing manual mode
         required: false
-    }
+    },
+    profitMode: {
+        type: String,
+        enum: ['automatic', 'manual'],
+        default: 'automatic'
+    },
+    manualProfitValue: {
+        type: Number, // Dedicated value for profit calculator manual mode
+        required: false
+    },
+    transactions: [{
+        date: { type: Date, required: true },
+        value: { type: Number, required: true }, // Absolute value
+        type: { type: String, enum: ['deposit', 'withdrawal'], required: true }
+    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Wallet', WalletSchema);

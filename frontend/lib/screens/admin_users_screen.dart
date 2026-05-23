@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'wallet_screen.dart';
 
 class AdminUsersScreen extends StatefulWidget {
   @override
@@ -103,6 +104,19 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                               tooltip: 'Reject',
                             ),
                           ],
+                          if (isActive) 
+                            IconButton(
+                              icon: Icon(Icons.account_balance_wallet, color: Colors.deepPurple),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (ctx) => WalletScreen(targetUserId: user['_id'], targetUserName: user['name']),
+                                  ),
+                                );
+                              },
+                              tooltip: 'Simulate Wallet',
+                            ),
                           if (isActive) 
                             IconButton(
                               icon: Icon(Icons.lock_reset, color: Colors.blue),

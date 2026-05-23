@@ -1,83 +1,70 @@
 const Wallet = require('../models/Wallet');
 const Stock = require('../models/Stock');
 
-// @desc    Get user wallet with rebalancing metrics
-// @route   GET /api/wallet
-exports.getWallet = async (req, res) => {
-    try {
-        let wallet = await Wallet.findOne({ user: req.user._id }).populate('items.stock');
-        
-        if (!wallet) {
-            wallet = await Wallet.create({ user: req.user._id, items: [] });
+// Helper to calculate wallet metrics (used by user and admin)
+const _calcWalletInternal = async (userId) => {
+    let wallet = await Wallet.findOne({ user: userId }).populate('items.stock');
+    if (!wallet) {
+        wallet = await Wallet.create({ user: userId, items: [], transactions: [] });
+    }
+
+    const itemsCount = wallet.items.length;
+    let totalVal = wallet.cash;
+
+    // 1. Calculate Current Portfolio Value
+    wallet.items.forEach(item => {
+        const price = (wallet.mode === 'manual' && item.manualPrice)
+            ? item.manualPrice
+            : (item.stock.price || 0);
+        totalVal += (item.quantity * price);
+    });
+
+    if (wallet.mode === 'manual' && wallet.manualTotalOverride) {
+        totalVal = wallet.manualTotalOverride;
+    }
+
+    // 2. Rebalancing Analysis
+    const sortedItems = [...wallet.items].sort((a, b) => {
+        const scoreA = a.stock.total_score || 0;
+        const scoreB = b.stock.total_score || 0;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return a.stock.ticker.localeCompare(b.stock.ticker);
+    });
+
+    const factor = wallet.factor;
+    let diffValue = 0;
+    const analysis = [];
+
+    if (itemsCount > 0) {
+        const alpha = (itemsCount - 1) / 2;
+        if (itemsCount > 1) {
+            diffValue = totalVal * (1 - factor) / itemsCount / (alpha + factor * alpha);
         }
 
-        const count = wallet.items.length;
-        if (count === 0) {
-            return res.json({ wallet, items: [], analysis: null });
-        }
-
-        // 1. Calculate Total Value
-        let totalVal = wallet.cash;
-        wallet.items.forEach(item => {
-            const price = (wallet.mode === 'manual' && item.manualPrice) 
-                ? item.manualPrice 
-                : (item.stock.price || 0);
-            totalVal += (item.quantity * price);
-        });
-
-        // Use manual override if exists and in manual mode
-        if (wallet.mode === 'manual' && wallet.manualTotalOverride) {
-            totalVal = wallet.manualTotalOverride;
-        }
-
-        // 2. Sort items by Score (total_score desc) then alphabetical
-        const sortedItems = [...wallet.items].sort((a, b) => {
-            const scoreA = a.stock.total_score || 0;
-            const scoreB = b.stock.total_score || 0;
-            if (scoreB !== scoreA) return scoreB - scoreA;
-            return a.stock.ticker.localeCompare(b.stock.ticker);
-        });
-
-        // 3. Rebalancing Constants
-        const factor = wallet.factor;
-        const alpha = (count - 1) / 2;
-        let diffValue = 0;
-        if (count > 1) {
-            diffValue = totalVal * (1 - factor) / count / (alpha + factor * alpha);
-        }
-
-        // 4. Calculate Supposed Values and Suggestions
-        const analysis = [];
         let previousSupposed = null;
-
         for (let i = 0; i < sortedItems.length; i++) {
             const item = sortedItems[i];
-            const currentPrice = (wallet.mode === 'manual' && item.manualPrice) 
-                ? item.manualPrice 
+            const currentPrice = (wallet.mode === 'manual' && item.manualPrice)
+                ? item.manualPrice
                 : (item.stock.price || 0);
-            
+
             const realMarketValue = item.quantity * currentPrice;
-            
+
             let supposedValue;
             if (i === 0) {
-                supposedValue = (totalVal / count) + ((count - 1) / 2 * diffValue);
+                supposedValue = (totalVal / itemsCount) + ((itemsCount - 1) / 2 * diffValue);
             } else {
                 supposedValue = previousSupposed - diffValue;
             }
             previousSupposed = supposedValue;
 
-            // Suggestion logic
             const gap = supposedValue - realMarketValue;
             let suggestion = 'Hold';
-            
-            // Check if deviation >= 10%
             if (realMarketValue > 0) {
                 const deviation = Math.abs(gap) / realMarketValue;
-                if (deviation >= 0.10) {
-                    suggestion = gap > 0 ? 'Buy' : 'Sell';
-                }
+                if (deviation >= 0.10) suggestion = gap > 0 ? 'Buy' : 'Sell';
             } else if (gap > 0) {
-                suggestion = 'Buy'; // If we have 0 quantity but should have value
+                suggestion = 'Buy';
             }
 
             analysis.push({
@@ -91,13 +78,87 @@ exports.getWallet = async (req, res) => {
                 suggestion
             });
         }
+    }
 
-        res.json({
-            wallet,
-            totalValue: totalVal,
-            diffValue,
-            analysis
-        });
+    // 3. Profit Calculator Logic
+    const now = new Date();
+    let totalEffectiveValue = 0;
+    let totalNetInvestment = 0;
+    let firstDepositDate = null;
+
+    (wallet.transactions || []).forEach(t => {
+        const val = t.type === 'deposit' ? t.value : -t.value;
+        const durationDays = (now - new Date(t.date)) / (1000 * 60 * 60 * 24);
+
+        totalEffectiveValue += val * Math.max(0, durationDays);
+        totalNetInvestment += val;
+
+        if (t.type === 'deposit') {
+            if (!firstDepositDate || new Date(t.date) < firstDepositDate) {
+                firstDepositDate = new Date(t.date);
+            }
+        }
+    });
+
+    let totalDuration = 0;
+    if (firstDepositDate) {
+        totalDuration = (now - firstDepositDate) / (1000 * 60 * 60 * 24);
+    }
+
+    const walletEffectiveValue = totalDuration > 0 ? (totalEffectiveValue / totalDuration) : 0;
+    
+    // Use the separate profit mode/value
+    const currentValueForProfit = (wallet.profitMode === 'manual' && wallet.manualProfitValue !== undefined)
+        ? wallet.manualProfitValue
+        : totalVal;
+
+    const revenue = currentValueForProfit - totalNetInvestment;
+    const revenuePercentage = walletEffectiveValue > 0 ? (revenue / walletEffectiveValue) : 0;
+
+    // Daily Ratio & Yearly Revenue
+    let dailyRatio = 1;
+    let yearlyRevenue = 0;
+
+    if (totalDuration > 0 && (revenuePercentage + 1) > 0) {
+        dailyRatio = Math.pow(10, Math.log10(revenuePercentage + 1) / totalDuration);
+        yearlyRevenue = Math.pow(dailyRatio, 365) - 1;
+    }
+
+    return {
+        wallet,
+        totalValue: totalVal,
+        currentValueForProfit, // Return this so UI knows what was used
+        diffValue,
+        analysis,
+        profit: {
+            totalNetInvestment,
+            walletEffectiveValue,
+            revenue,
+            revenuePercentage,
+            dailyRatio,
+            yearlyRevenue,
+            totalDuration
+        }
+    };
+};
+
+// @desc    Get user wallet with rebalancing metrics
+// @route   GET /api/wallet
+exports.getWallet = async (req, res) => {
+    try {
+        const data = await _calcWalletInternal(req.user._id);
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Get wallet for a specific user (Admin only)
+// @route   GET /api/wallet/admin/:userId
+exports.getWalletForUser = async (req, res) => {
+    try {
+        const data = await _calcWalletInternal(req.params.userId);
+        res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -126,10 +187,10 @@ exports.updateWalletItem = async (req, res) => {
                 if (manualPrice !== undefined) wallet.items[itemIndex].manualPrice = manualPrice;
             }
         } else if (quantity > 0) {
-            wallet.items.push({ 
-                stock: stock._id, 
-                quantity, 
-                manualPrice 
+            wallet.items.push({
+                stock: stock._id,
+                quantity,
+                manualPrice
             });
         }
 
@@ -145,12 +206,65 @@ exports.updateWalletItem = async (req, res) => {
 // @route   PATCH /api/wallet
 exports.updateWalletSettings = async (req, res) => {
     try {
-        const { cash, factor, mode, manualTotalOverride } = req.body;
+        const { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue } = req.body;
         const wallet = await Wallet.findOneAndUpdate(
             { user: req.user._id },
-            { cash, factor, mode, manualTotalOverride },
+            { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue },
             { new: true, upsert: true }
         ).populate('items.stock');
+        res.json(wallet);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Add a transaction (deposit/withdrawal)
+// @route   POST /api/wallet/transactions
+exports.addTransaction = async (req, res) => {
+    try {
+        const { date, value, type, userId } = req.body;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+        const wallet = await Wallet.findOne({ user: targetId });
+        wallet.transactions.push({ date, value, type });
+        await wallet.save();
+        res.json(wallet);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Update a transaction
+// @route   PUT /api/wallet/transactions/:id
+exports.updateTransaction = async (req, res) => {
+    try {
+        const { date, value, type, userId } = req.body;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+
+        const wallet = await Wallet.findOne({ user: targetId });
+        const transaction = wallet.transactions.id(req.params.id);
+        if (!transaction) return res.status(404).json({ message: 'Transaction not found' });
+
+        transaction.date = date;
+        transaction.value = value;
+        transaction.type = type;
+
+        await wallet.save();
+        res.json(wallet);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Delete a transaction
+// @route   DELETE /api/wallet/transactions/:id
+exports.deleteTransaction = async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+
+        const wallet = await Wallet.findOne({ user: targetId });
+        wallet.transactions.pull(req.params.id);
+        await wallet.save();
         res.json(wallet);
     } catch (error) {
         res.status(500).json({ error: error.message });
