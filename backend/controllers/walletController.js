@@ -93,7 +93,7 @@ const _calcWalletInternal = async (userId) => {
     let activeSnapshot = null;
     if (activeSnapshotId) {
         activeSnapshot = (wallet.pointsOnTime || []).find(
-            p => p._id.toString() === activeSnapshotId && new Date(p.date) <= now
+            p => p._id.toString() === activeSnapshotId
         ) || null;
     }
 
@@ -138,7 +138,7 @@ const _calcWalletInternal = async (userId) => {
 
     let totalDuration = 0;
     if (firstDepositDate) {
-        totalDuration = (now - firstDepositDate) / (1000 * 60 * 60 * 24);
+        totalDuration = Math.max(0, (now - firstDepositDate) / (1000 * 60 * 60 * 24));
     }
 
     const walletEffectiveValue = totalDuration > 0 ? (totalEffectiveValue / totalDuration) : 0;
@@ -281,14 +281,24 @@ exports.updateWalletItem = async (req, res) => {
 // @route   PATCH /api/wallet
 exports.updateWalletSettings = async (req, res) => {
     try {
-        const { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue, activePointOnTimeId } = req.body;
-        const update = { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue };
-        // Allow explicitly setting to null to deactivate snapshot
+        const { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue, activePointOnTimeId, userId } = req.body;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+
+        const update = {};
+        if (cash !== undefined) update.cash = cash;
+        if (factor !== undefined) update.factor = factor;
+        if (mode !== undefined) update.mode = mode;
+        if (manualTotalOverride !== undefined) update.manualTotalOverride = manualTotalOverride;
+        if (profitMode !== undefined) update.profitMode = profitMode;
+        if (manualProfitValue !== undefined) update.manualProfitValue = manualProfitValue;
+        
+        // Handle snapshot activation/deactivation
         if (activePointOnTimeId !== undefined) {
             update.activePointOnTimeId = activePointOnTimeId || null;
         }
+
         const wallet = await Wallet.findOneAndUpdate(
-            { user: req.user._id },
+            { user: targetId },
             update,
             { new: true, upsert: true }
         ).populate('items.stock');

@@ -97,6 +97,7 @@ class WalletService {
     double? manualTotalOverride,
     String? profitMode,
     double? manualProfitValue,
+    String? targetUserId,
   }) async {
     final headers = await _auth.authHeaders();
     final body = <String, dynamic>{};
@@ -106,6 +107,8 @@ class WalletService {
     if (manualTotalOverride != null) body['manualTotalOverride'] = manualTotalOverride;
     if (profitMode != null) body['profitMode'] = profitMode;
     if (manualProfitValue != null) body['manualProfitValue'] = manualProfitValue;
+    if (targetUserId != null) body['userId'] = targetUserId;
+
     final response = await http.patch(
       Uri.parse(_baseUrl),
       headers: headers,
@@ -175,11 +178,11 @@ class WalletService {
     }
   }
 
-  /// Set or clear the active snapshot anchor for profit calculations.
-  /// Pass [id] to activate a snapshot; pass null to revert to all-transactions mode.
-  Future<void> setActivePointOnTime(String? id) async {
+  Future<void> setActivePointOnTime(String? id, {String? targetUserId}) async {
     final headers = await _auth.authHeaders();
     final body = <String, dynamic>{'activePointOnTimeId': id};
+    if (targetUserId != null) body['userId'] = targetUserId;
+    
     final response = await http.patch(
       Uri.parse(_baseUrl),
       headers: headers,

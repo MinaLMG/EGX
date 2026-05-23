@@ -134,6 +134,7 @@ class _WalletScreenState extends State<WalletScreen> {
         manualTotalOverride: double.tryParse(_totalOverrideController.text),
         profitMode: _profitMode,
         manualProfitValue: double.tryParse(_manualProfitValueController.text),
+        targetUserId: widget.targetUserId,
       );
       await _loadData();
       ScaffoldMessenger.of(
@@ -185,7 +186,7 @@ class _WalletScreenState extends State<WalletScreen> {
   // Snapshot actions
   Future<void> _setActiveSnapshot(String? id) async {
     try {
-      await _walletService.setActivePointOnTime(id);
+      await _walletService.setActivePointOnTime(id, targetUserId: widget.targetUserId);
       await _loadData();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
