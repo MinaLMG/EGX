@@ -54,7 +54,15 @@ const WalletSchema = new mongoose.Schema({
         date: { type: Date, required: true },
         value: { type: Number, required: true }, // Absolute value
         type: { type: String, enum: ['deposit', 'withdrawal'], required: true }
-    }]
+    }],
+    pointsOnTime: [{
+        date: { type: Date, required: true },
+        balance: { type: Number, required: true } // Known wallet balance at end of this date
+    }],
+    activePointOnTimeId: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: null // null = use all transactions (default); set to a pointsOnTime _id to anchor profit from that snapshot
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Wallet', WalletSchema);

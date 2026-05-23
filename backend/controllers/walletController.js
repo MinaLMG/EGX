@@ -86,19 +86,55 @@ const _calcWalletInternal = async (userId) => {
     let totalNetInvestment = 0;
     let firstDepositDate = null;
 
-    (wallet.transactions || []).forEach(t => {
-        const val = t.type === 'deposit' ? t.value : -t.value;
-        const durationDays = (now - new Date(t.date)) / (1000 * 60 * 60 * 24);
+    // Determine if an active snapshot is selected
+    const activeSnapshotId = wallet.activePointOnTimeId
+        ? wallet.activePointOnTimeId.toString()
+        : null;
+    let activeSnapshot = null;
+    if (activeSnapshotId) {
+        activeSnapshot = (wallet.pointsOnTime || []).find(
+            p => p._id.toString() === activeSnapshotId && new Date(p.date) <= now
+        ) || null;
+    }
 
-        totalEffectiveValue += val * Math.max(0, durationDays);
-        totalNetInvestment += val;
+    if (activeSnapshot) {
+        // Snapshot mode: treat snapshot balance as a deposit at snapshot.date,
+        // ignore all real transactions on or before that date.
+        const snapshotDate = new Date(activeSnapshot.date);
+        // End-of-day: include the full snapshot day
+        snapshotDate.setHours(23, 59, 59, 999);
 
-        if (t.type === 'deposit') {
-            if (!firstDepositDate || new Date(t.date) < firstDepositDate) {
-                firstDepositDate = new Date(t.date);
+        // Synthetic starting deposit
+        const syntheticDuration = (now - snapshotDate) / (1000 * 60 * 60 * 24);
+        totalEffectiveValue += activeSnapshot.balance * Math.max(0, syntheticDuration);
+        totalNetInvestment += activeSnapshot.balance;
+        firstDepositDate = snapshotDate;
+
+        // Add transactions AFTER the snapshot date
+        (wallet.transactions || []).forEach(t => {
+            const tDate = new Date(t.date);
+            if (tDate <= snapshotDate) return; // skip transactions up to and including snapshot date
+            const val = t.type === 'deposit' ? t.value : -t.value;
+            const durationDays = (now - tDate) / (1000 * 60 * 60 * 24);
+            totalEffectiveValue += val * Math.max(0, durationDays);
+            totalNetInvestment += val;
+        });
+    } else {
+        // Default mode: use all transactions
+        (wallet.transactions || []).forEach(t => {
+            const val = t.type === 'deposit' ? t.value : -t.value;
+            const durationDays = (now - new Date(t.date)) / (1000 * 60 * 60 * 24);
+
+            totalEffectiveValue += val * Math.max(0, durationDays);
+            totalNetInvestment += val;
+
+            if (t.type === 'deposit') {
+                if (!firstDepositDate || new Date(t.date) < firstDepositDate) {
+                    firstDepositDate = new Date(t.date);
+                }
             }
-        }
-    });
+        });
+    }
 
     let totalDuration = 0;
     if (firstDepositDate) {
@@ -106,7 +142,7 @@ const _calcWalletInternal = async (userId) => {
     }
 
     const walletEffectiveValue = totalDuration > 0 ? (totalEffectiveValue / totalDuration) : 0;
-    
+
     // Use the separate profit mode/value
     const currentValueForProfit = (wallet.profitMode === 'manual' && wallet.manualProfitValue !== undefined)
         ? wallet.manualProfitValue
@@ -127,7 +163,8 @@ const _calcWalletInternal = async (userId) => {
     return {
         wallet,
         totalValue: totalVal,
-        currentValueForProfit, // Return this so UI knows what was used
+        currentValueForProfit,
+        activeSnapshot: activeSnapshot ? { _id: activeSnapshot._id, date: activeSnapshot.date, balance: activeSnapshot.balance } : null,
         diffValue,
         analysis,
         profit: {
@@ -206,10 +243,15 @@ exports.updateWalletItem = async (req, res) => {
 // @route   PATCH /api/wallet
 exports.updateWalletSettings = async (req, res) => {
     try {
-        const { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue } = req.body;
+        const { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue, activePointOnTimeId } = req.body;
+        const update = { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue };
+        // Allow explicitly setting to null to deactivate snapshot
+        if (activePointOnTimeId !== undefined) {
+            update.activePointOnTimeId = activePointOnTimeId || null;
+        }
         const wallet = await Wallet.findOneAndUpdate(
             { user: req.user._id },
-            { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue },
+            update,
             { new: true, upsert: true }
         ).populate('items.stock');
         res.json(wallet);
@@ -264,6 +306,80 @@ exports.deleteTransaction = async (req, res) => {
 
         const wallet = await Wallet.findOne({ user: targetId });
         wallet.transactions.pull(req.params.id);
+        await wallet.save();
+        res.json(wallet);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Add a point-on-time balance snapshot
+// @route   POST /api/wallet/points
+exports.addPointOnTime = async (req, res) => {
+    try {
+        const { date, balance, userId } = req.body;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+
+        const snapshotDate = new Date(date);
+        if (snapshotDate > new Date()) {
+            return res.status(400).json({ message: 'Snapshot date cannot be in the future.' });
+        }
+
+        const wallet = await Wallet.findOne({ user: targetId });
+        if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
+
+        wallet.pointsOnTime.push({ date: snapshotDate, balance });
+        await wallet.save();
+        res.json(wallet);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Update a point-on-time snapshot
+// @route   PUT /api/wallet/points/:id
+exports.updatePointOnTime = async (req, res) => {
+    try {
+        const { date, balance, userId } = req.body;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+
+        const snapshotDate = new Date(date);
+        if (snapshotDate > new Date()) {
+            return res.status(400).json({ message: 'Snapshot date cannot be in the future.' });
+        }
+
+        const wallet = await Wallet.findOne({ user: targetId });
+        if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
+
+        const point = wallet.pointsOnTime.id(req.params.id);
+        if (!point) return res.status(404).json({ message: 'Snapshot not found' });
+
+        point.date = snapshotDate;
+        point.balance = balance;
+        await wallet.save();
+        res.json(wallet);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Delete a point-on-time snapshot
+// @route   DELETE /api/wallet/points/:id
+exports.deletePointOnTime = async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+
+        const wallet = await Wallet.findOne({ user: targetId });
+        if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
+
+        // If the deleted snapshot is currently active, clear the reference
+        if (wallet.activePointOnTimeId &&
+            wallet.activePointOnTimeId.toString() === req.params.id) {
+            wallet.activePointOnTimeId = null;
+        }
+
+        wallet.pointsOnTime.pull(req.params.id);
         await wallet.save();
         res.json(wallet);
     } catch (error) {

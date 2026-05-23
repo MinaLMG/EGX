@@ -169,24 +169,113 @@ class _WalletScreenState extends State<WalletScreen> {
       _valController.clear();
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Future<void> _deleteTransaction(String id) async {
     try {
-      await _walletService.deleteTransaction(
-        id,
-        targetUserId: widget.targetUserId,
-      );
+      await _walletService.deleteTransaction(id, targetUserId: widget.targetUserId);
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
+  }
+
+  // Snapshot actions
+  Future<void> _setActiveSnapshot(String? id) async {
+    try {
+      await _walletService.setActivePointOnTime(id);
+      await _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  Future<void> _deleteSnapshot(String id) async {
+    try {
+      await _walletService.deletePointOnTime(id, targetUserId: widget.targetUserId);
+      await _loadData();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  // Admin-only: Add / edit a snapshot
+  void _showSnapshotDialog({Map? snap}) {
+    final balanceCtrl = TextEditingController(
+      text: snap != null ? snap['balance'].toString() : '',
+    );
+    DateTime snapDate = snap != null
+        ? DateTime.parse(snap['date']).toLocal()
+        : DateTime.now();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(snap == null ? 'Add Balance Snapshot' : 'Edit Snapshot'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('Date: ${snapDate.toString().split(' ')[0]}'),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () async {
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: snapDate,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(), // no future dates
+                  );
+                  if (d != null) setLocal(() => snapDate = d);
+                },
+              ),
+              TextField(
+                controller: balanceCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Wallet Balance (EGP)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                final bal = double.tryParse(balanceCtrl.text);
+                if (bal == null) return;
+                Navigator.pop(ctx);
+                try {
+                  if (snap == null) {
+                    await _walletService.addPointOnTime(
+                      date: snapDate,
+                      balance: bal,
+                      targetUserId: widget.targetUserId,
+                    );
+                  } else {
+                    await _walletService.updatePointOnTime(
+                      id: snap['_id'],
+                      date: snapDate,
+                      balance: bal,
+                      targetUserId: widget.targetUserId,
+                    );
+                  }
+                  await _loadData();
+                } catch (e) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+              child: Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Color _suggestionColor(String suggestion) {
@@ -543,6 +632,8 @@ class _WalletScreenState extends State<WalletScreen> {
           SizedBox(height: 16),
           _buildProfitSummary(profit),
           SizedBox(height: 24),
+          _buildSnapshotsSection(),
+          SizedBox(height: 24),
           _buildProfitSettingsSection(),
           SizedBox(height: 24),
           Row(
@@ -568,6 +659,120 @@ class _WalletScreenState extends State<WalletScreen> {
           _buildTransactionList(trans),
         ],
       ),
+    );
+  }
+
+  Widget _buildSnapshotsSection() {
+    final points = (_walletData?['wallet']?['pointsOnTime'] as List?) ?? [];
+    final activeId = _walletData?['wallet']?['activePointOnTimeId'] as String?;
+    final isAdmin = widget.targetUserId != null;
+
+    // Sort desc by date
+    final sorted = List.from(points)
+      ..sort((a, b) => b['date'].compareTo(a['date']));
+
+    return ExpansionTile(
+      leading: Icon(Icons.timeline, color: Colors.indigo),
+      title: Text(
+        'Balance Snapshots',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(
+        activeId != null
+            ? 'Profit anchored to a snapshot (tap to change)'
+            : 'Using all transactions (tap to anchor)',
+        style: TextStyle(fontSize: 12),
+      ),
+      children: [
+        if (sorted.isEmpty)
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              isAdmin
+                  ? 'No snapshots yet. Add one below.'
+                  : 'No snapshots available. Ask an admin to add one.',
+              style: TextStyle(color: Colors.black54),
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: sorted.length,
+            itemBuilder: (ctx, i) {
+              final snap = sorted[i];
+              final snapId = snap['_id'] as String;
+              final isActive = activeId == snapId;
+              final date = DateTime.parse(snap['date']).toLocal();
+              final balance = (snap['balance'] as num).toDouble();
+
+              return Card(
+                margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(
+                    color: isActive ? Colors.indigo : Colors.transparent,
+                    width: 1.5,
+                  ),
+                ),
+                color: isActive ? Colors.indigo.shade50 : null,
+                child: ListTile(
+                  leading: GestureDetector(
+                    onTap: () => _setActiveSnapshot(isActive ? null : snapId),
+                    child: Icon(
+                      isActive ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      color: isActive ? Colors.indigo : Colors.grey,
+                    ),
+                  ),
+                  title: Text(
+                    'EGP ${balance.toStringAsFixed(0)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isActive ? Colors.indigo : Colors.black87,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${date.toString().split(' ')[0]}${isActive ? '  •  ACTIVE' : ''}',
+                    style: TextStyle(
+                      color: isActive ? Colors.indigo : Colors.black54,
+                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                    ),
+                  ),
+                  trailing: isAdmin
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, size: 18),
+                              onPressed: () => _showSnapshotDialog(snap: snap),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete, size: 18, color: Colors.red),
+                              onPressed: () => _deleteSnapshot(snapId),
+                            ),
+                          ],
+                        )
+                      : null,
+                  onTap: () => _setActiveSnapshot(isActive ? null : snapId),
+                ),
+              );
+            },
+          ),
+        if (isAdmin)
+          Padding(
+            padding: EdgeInsets.all(12),
+            child: ElevatedButton.icon(
+              onPressed: () => _showSnapshotDialog(),
+              icon: Icon(Icons.add, size: 18),
+              label: Text('Add Snapshot'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo,
+                foregroundColor: Colors.white,
+                minimumSize: Size(double.infinity, 42),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -618,47 +823,109 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildProfitSummary(Map<String, dynamic>? profit) {
     if (profit == null) return SizedBox.shrink();
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.6,
+    final activeSnap = _walletData?['activeSnapshot'];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _infoCard(
-          'Effective Value',
-          'EGP ${_fmt(profit['walletEffectiveValue'])}',
-          Icons.account_balance,
-        ),
-        _infoCard(
-          'Net Revenue',
-          'EGP ${_fmt(profit['revenue'])}',
-          Icons.monetization_on,
-          color: (profit['revenue'] ?? 0) >= 0 ? Colors.green : Colors.red,
-        ),
-        _infoCard(
-          'Revenue %',
-          '${((profit['revenuePercentage'] ?? 0) * 100).toStringAsFixed(2)}%',
-          Icons.percent,
-        ),
-        _infoCard(
-          'Daily Ratio',
-          '${profit['dailyRatio']?.toStringAsFixed(6)}',
-          Icons.today,
-        ),
-        _infoCard(
-          'Yearly Return',
-          '${((profit['yearlyRevenue'] ?? 0) * 100).toStringAsFixed(1)}%',
-          Icons.calendar_today,
-          color: Colors.orange,
-        ),
-        _infoCard(
-          'Total Duration',
-          '${(profit['totalDuration'] ?? 0).toInt()} Days',
-          Icons.timer,
+        if (activeSnap != null) _buildActiveSnapshotBanner(activeSnap),
+        if (activeSnap != null) SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 1.6,
+          children: [
+            _infoCard(
+              'Effective Value',
+              'EGP ${_fmt(profit['walletEffectiveValue'])}',
+              Icons.account_balance,
+            ),
+            _infoCard(
+              'Net Revenue',
+              'EGP ${_fmt(profit['revenue'])}',
+              Icons.monetization_on,
+              color: (profit['revenue'] ?? 0) >= 0 ? Colors.green : Colors.red,
+            ),
+            _infoCard(
+              'Revenue %',
+              '${((profit['revenuePercentage'] ?? 0) * 100).toStringAsFixed(2)}%',
+              Icons.percent,
+            ),
+            _infoCard(
+              'Daily Ratio',
+              '${profit['dailyRatio']?.toStringAsFixed(6)}',
+              Icons.today,
+            ),
+            _infoCard(
+              'Yearly Return',
+              '${((profit['yearlyRevenue'] ?? 0) * 100).toStringAsFixed(1)}%',
+              Icons.calendar_today,
+              color: Colors.orange,
+            ),
+            _infoCard(
+              'Total Duration',
+              '${(profit['totalDuration'] ?? 0).toInt()} Days',
+              Icons.timer,
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildActiveSnapshotBanner(Map<String, dynamic> snap) {
+    final date = DateTime.parse(snap['date']).toLocal().toString().split(' ')[0];
+    final balance = (snap['balance'] as num).toStringAsFixed(0);
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.indigo.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.indigo.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.anchor, color: Colors.indigo, size: 18),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Anchored to snapshot',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.indigo.shade400,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '$date  •  EGP $balance',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.indigo.shade700,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  'Transactions before this date are excluded',
+                  style: TextStyle(fontSize: 10, color: Colors.indigo.shade400),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => _setActiveSnapshot(null),
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            child: Text(
+              'Clear',
+              style: TextStyle(color: Colors.indigo, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

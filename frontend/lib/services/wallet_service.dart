@@ -10,7 +10,7 @@ class WalletService {
   Future<Map<String, dynamic>> getWallet({String? targetUserId}) async {
     final headers = await _auth.authHeaders();
     final url = targetUserId != null ? '$_baseUrl/admin/$targetUserId' : _baseUrl;
-    
+
     final response = await http.get(Uri.parse(url), headers: headers);
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -32,7 +32,6 @@ class WalletService {
       'type': type,
       if (targetUserId != null) 'userId': targetUserId,
     };
-
     final response = await http.post(
       Uri.parse('$_baseUrl/transactions'),
       headers: headers,
@@ -57,7 +56,6 @@ class WalletService {
       'type': type,
       if (targetUserId != null) 'userId': targetUserId,
     };
-
     final response = await http.put(
       Uri.parse('$_baseUrl/transactions/$id'),
       headers: headers,
@@ -72,7 +70,6 @@ class WalletService {
     final headers = await _auth.authHeaders();
     var url = '$_baseUrl/transactions/$id';
     if (targetUserId != null) url += '?userId=$targetUserId';
-
     final response = await http.delete(Uri.parse(url), headers: headers);
     if (response.statusCode != 200) {
       throw Exception('Failed to delete transaction: ${response.body}');
@@ -83,7 +80,6 @@ class WalletService {
     final headers = await _auth.authHeaders();
     final body = <String, dynamic>{'ticker': ticker, 'quantity': quantity};
     if (manualPrice != null) body['manualPrice'] = manualPrice;
-
     final response = await http.post(
       Uri.parse('$_baseUrl/items'),
       headers: headers,
@@ -110,7 +106,6 @@ class WalletService {
     if (manualTotalOverride != null) body['manualTotalOverride'] = manualTotalOverride;
     if (profitMode != null) body['profitMode'] = profitMode;
     if (manualProfitValue != null) body['manualProfitValue'] = manualProfitValue;
-
     final response = await http.patch(
       Uri.parse(_baseUrl),
       headers: headers,
@@ -118,6 +113,76 @@ class WalletService {
     );
     if (response.statusCode != 200) {
       throw Exception('Failed to update settings: ${response.body}');
+    }
+  }
+
+  // ----- Points-on-Time (balance snapshots) -----
+
+  Future<void> addPointOnTime({
+    required DateTime date,
+    required double balance,
+    String? targetUserId,
+  }) async {
+    final headers = await _auth.authHeaders();
+    final body = <String, dynamic>{
+      'date': date.toUtc().toIso8601String(),
+      'balance': balance,
+      if (targetUserId != null) 'userId': targetUserId,
+    };
+    final response = await http.post(
+      Uri.parse('$_baseUrl/points'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to add snapshot: ${response.body}');
+    }
+  }
+
+  Future<void> updatePointOnTime({
+    required String id,
+    required DateTime date,
+    required double balance,
+    String? targetUserId,
+  }) async {
+    final headers = await _auth.authHeaders();
+    final body = <String, dynamic>{
+      'date': date.toUtc().toIso8601String(),
+      'balance': balance,
+      if (targetUserId != null) 'userId': targetUserId,
+    };
+    final response = await http.put(
+      Uri.parse('$_baseUrl/points/$id'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update snapshot: ${response.body}');
+    }
+  }
+
+  Future<void> deletePointOnTime(String id, {String? targetUserId}) async {
+    final headers = await _auth.authHeaders();
+    var url = '$_baseUrl/points/$id';
+    if (targetUserId != null) url += '?userId=$targetUserId';
+    final response = await http.delete(Uri.parse(url), headers: headers);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete snapshot: ${response.body}');
+    }
+  }
+
+  /// Set or clear the active snapshot anchor for profit calculations.
+  /// Pass [id] to activate a snapshot; pass null to revert to all-transactions mode.
+  Future<void> setActivePointOnTime(String? id) async {
+    final headers = await _auth.authHeaders();
+    final body = <String, dynamic>{'activePointOnTimeId': id};
+    final response = await http.patch(
+      Uri.parse(_baseUrl),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to set active snapshot: ${response.body}');
     }
   }
 }
