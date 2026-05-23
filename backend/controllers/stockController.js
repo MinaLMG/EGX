@@ -180,8 +180,8 @@ exports.getStocksExcel = async (req, res) => {
                 (rowIndex > 1 && curr && techTarget) ? { formula: `${techTarget}/B${rowIndex}-1` } : null,
                 stock.fundamental_potential,
                 stock.technical_potential,
-                stock.rfp_score,
-                stock.rsp_score,
+                stock.rfp_score || null,   // blank if not in RFP list
+                stock.rsp_score || null,   // blank if not in RSP list
                 stock.arabstock_score,
                 stock.total_score
             ];
@@ -234,9 +234,15 @@ exports.getStocksExcel = async (req, res) => {
             else if (index0 < 13) col.width = 15;
             else col.width = 18; // Users
 
-            // Hide internal score columns (G through K: index 6 to 10)
-            if (index0 >= 6 && index0 <= 10) {
+            // Hide internal rank-score columns G (i2), H (i3), K (i4)
+            // Keep I (RFP) and J (RSP) visible
+            if (index0 === 6 || index0 === 7 || index0 === 10) {
                 col.hidden = true;
+            }
+
+            // Percentage format for Fund (E=4) and Techn (F=5)
+            if (index0 === 4 || index0 === 5) {
+                col.numFmt = '0.00%';
             }
         });
 

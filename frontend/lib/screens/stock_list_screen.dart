@@ -96,14 +96,15 @@ class _StockListScreenState extends State<StockListScreen> {
         backgroundColor: Colors.deepPurple,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: Icon(Icons.link),
-            tooltip: 'Mubasher Matching',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => MubasherMatchingScreen()),
+          if (_isAdmin)
+            IconButton(
+              icon: Icon(Icons.link),
+              tooltip: 'Mubasher Matching',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => MubasherMatchingScreen()),
+              ),
             ),
-          ),
           if (_isAdmin)
             IconButton(
               icon: Icon(Icons.grid_on),
@@ -322,32 +323,33 @@ class _StockListScreenState extends State<StockListScreen> {
                             _buildScoreRow('RFP Score', stock.rfpScore),
                             _buildScoreRow('RSP Score', stock.rspScore),
                             SizedBox(height: 16),
-                            Center(
-                              child: ElevatedButton.icon(
-                                icon: Icon(Icons.link),
-                                label: Text(
-                                  isMatched
-                                      ? 'Change Match'
-                                      : 'Match ArabicStock',
-                                ),
-                                onPressed: () async {
-                                  await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          MatchScreen(stock: stock),
+                            if (_isAdmin)
+                              Center(
+                                child: ElevatedButton.icon(
+                                  icon: Icon(Icons.link),
+                                  label: Text(
+                                    isMatched
+                                        ? 'Change Match'
+                                        : 'Match ArabicStock',
+                                  ),
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            MatchScreen(stock: stock),
+                                      ),
+                                    );
+                                    _refresh();
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                  );
-                                  _refresh();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepPurple,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
