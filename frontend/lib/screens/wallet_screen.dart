@@ -206,6 +206,9 @@ class _WalletScreenState extends State<WalletScreen> {
     final balanceCtrl = TextEditingController(
       text: snap != null ? snap['balance'].toString() : '',
     );
+    final bankRatioCtrl = TextEditingController(
+      text: snap != null ? (snap['bankRatio'] ?? '0').toString() : '0',
+    );
     DateTime snapDate = snap != null
         ? DateTime.parse(snap['date']).toLocal()
         : DateTime.now();
@@ -215,38 +218,52 @@ class _WalletScreenState extends State<WalletScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
           title: Text(snap == null ? 'Add Balance Snapshot' : 'Edit Snapshot'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('Date: ${snapDate.toString().split(' ')[0]}'),
-                trailing: Icon(Icons.calendar_today),
-                onTap: () async {
-                  final d = await showDatePicker(
-                    context: context,
-                    initialDate: snapDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(), // no future dates
-                  );
-                  if (d != null) setLocal(() => snapDate = d);
-                },
-              ),
-              TextField(
-                controller: balanceCtrl,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Wallet Balance (EGP)',
-                  border: OutlineInputBorder(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Date: ${snapDate.toString().split(' ')[0]}'),
+                  trailing: Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      initialDate: snapDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(), // no future dates
+                    );
+                    if (d != null) setLocal(() => snapDate = d);
+                  },
                 ),
-              ),
-            ],
+                TextField(
+                  controller: balanceCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Wallet Balance (EGP)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  controller: bankRatioCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Bank Interest Ratio (Annual %)',
+                    border: OutlineInputBorder(),
+                    helperText: 'e.g. 25 for 25% annual return',
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
             ElevatedButton(
               onPressed: () async {
                 final bal = double.tryParse(balanceCtrl.text);
+                final ratio = double.tryParse(bankRatioCtrl.text) ?? 0;
                 if (bal == null) return;
                 Navigator.pop(ctx);
                 try {
@@ -254,6 +271,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     await _walletService.addPointOnTime(
                       date: snapDate,
                       balance: bal,
+                      bankRatio: ratio,
                       targetUserId: widget.targetUserId,
                     );
                   } else {
@@ -261,6 +279,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       id: snap['_id'],
                       date: snapDate,
                       balance: bal,
+                      bankRatio: ratio,
                       targetUserId: widget.targetUserId,
                     );
                   }
@@ -732,10 +751,11 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                   ),
                   subtitle: Text(
-                    '${date.toString().split(' ')[0]}${isActive ? '  •  ACTIVE' : ''}',
+                    '${date.toString().split(' ')[0]}${isActive ? '  •  ACTIVE' : ''}\nBank Ratio: ${snap['bankRatio'] ?? 0}%',
                     style: TextStyle(
                       color: isActive ? Colors.indigo : Colors.black54,
                       fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 11,
                     ),
                   ),
                   trailing: isAdmin
@@ -824,6 +844,8 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget _buildProfitSummary(Map<String, dynamic>? profit) {
     if (profit == null) return SizedBox.shrink();
     final activeSnap = _walletData?['activeSnapshot'];
+    final bankComp = _walletData?['bankComparison'];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -869,6 +891,21 @@ class _WalletScreenState extends State<WalletScreen> {
               '${(profit['totalDuration'] ?? 0).toInt()} Days',
               Icons.timer,
             ),
+            if (bankComp != null) ...[
+              _infoCard(
+                'Extra Revenue',
+                'EGP ${_fmt(bankComp['extraRevenue'])}',
+                Icons.star,
+                color: (bankComp['extraRevenue'] ?? 0) >= 0
+                    ? Colors.blue
+                    : Colors.orange,
+              ),
+              _infoCard(
+                'Bank Revenue',
+                'EGP ${_fmt(bankComp['bankSupposedRevenue'])}',
+                Icons.account_balance_outlined,
+              ),
+            ],
           ],
         ),
       ],

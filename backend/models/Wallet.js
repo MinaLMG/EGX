@@ -57,7 +57,8 @@ const WalletSchema = new mongoose.Schema({
     }],
     pointsOnTime: [{
         date: { type: Date, required: true },
-        balance: { type: Number, required: true } // Known wallet balance at end of this date
+        balance: { type: Number, required: true }, // Known wallet balance at end of this date
+        bankRatio: { type: Number, default: 0 }    // Annual bank interest rate % at this point (e.g. 25 for 25%)
     }],
     activePointOnTimeId: {
         type: mongoose.Schema.Types.ObjectId,

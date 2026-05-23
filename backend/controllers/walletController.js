@@ -160,13 +160,51 @@ const _calcWalletInternal = async (userId) => {
         yearlyRevenue = Math.pow(dailyRatio, 365) - 1;
     }
 
+    // ── Bank comparison (only when a snapshot with bankRatio is active) ──
+    let bankComparison = null;
+    if (activeSnapshot && activeSnapshot.bankRatio > 0) {
+        const annualRate = activeSnapshot.bankRatio / 100; // e.g. 0.25 for 25%
+        const bankDailyRatio = Math.pow(10, Math.log10(annualRate + 1) / 365);
+        const snapshotDate = new Date(activeSnapshot.date);
+        snapshotDate.setHours(23, 59, 59, 999);
+        // Revenue the bank would have generated on the snapshot balance
+        const snapDuration = Math.ceil((now - snapshotDate) / (1000 * 60 * 60 * 24));
+        let bankSupposedRevenue = activeSnapshot.balance * (Math.pow(bankDailyRatio, Math.max(0, snapDuration)) - 1);
+        // Revenue the bank would have generated on each post-snapshot transaction
+        (wallet.transactions || []).forEach(t => {
+            const tDate = new Date(t.date);
+
+            if (tDate <= snapshotDate) return;
+            const val = t.type === 'deposit' ? t.value : -t.value;
+            const dur = Math.ceil((now - tDate) / (1000 * 60 * 60 * 24));
+            bankSupposedRevenue += val * (Math.pow(bankDailyRatio, Math.max(0, dur)) - 1);
+        });
+
+        const bankYearlyRevenue = Math.pow(bankDailyRatio, 365) - 1;
+        const extraRevenue = revenue - bankSupposedRevenue;
+
+        bankComparison = {
+            bankRatio: activeSnapshot.bankRatio,        // annual %
+            bankDailyRatio,                             // daily compound factor
+            bankYearlyRevenue,                          // annual yield as decimal (e.g. 0.25)
+            bankSupposedRevenue,                        // EGP bank would have earned
+            extraRevenue,                               // walletRevenue - bankSupposedRevenue
+        };
+    }
+
     return {
         wallet,
         totalValue: totalVal,
         currentValueForProfit,
-        activeSnapshot: activeSnapshot ? { _id: activeSnapshot._id, date: activeSnapshot.date, balance: activeSnapshot.balance } : null,
+        activeSnapshot: activeSnapshot ? {
+            _id: activeSnapshot._id,
+            date: activeSnapshot.date,
+            balance: activeSnapshot.balance,
+            bankRatio: activeSnapshot.bankRatio || 0
+        } : null,
         diffValue,
         analysis,
+        bankComparison,
         profit: {
             totalNetInvestment,
             walletEffectiveValue,
@@ -317,7 +355,7 @@ exports.deleteTransaction = async (req, res) => {
 // @route   POST /api/wallet/points
 exports.addPointOnTime = async (req, res) => {
     try {
-        const { date, balance, userId } = req.body;
+        const { date, balance, bankRatio, userId } = req.body;
         const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
 
         const snapshotDate = new Date(date);
@@ -328,7 +366,7 @@ exports.addPointOnTime = async (req, res) => {
         const wallet = await Wallet.findOne({ user: targetId });
         if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
 
-        wallet.pointsOnTime.push({ date: snapshotDate, balance });
+        wallet.pointsOnTime.push({ date: snapshotDate, balance, bankRatio: bankRatio || 0 });
         await wallet.save();
         res.json(wallet);
     } catch (error) {
@@ -340,7 +378,7 @@ exports.addPointOnTime = async (req, res) => {
 // @route   PUT /api/wallet/points/:id
 exports.updatePointOnTime = async (req, res) => {
     try {
-        const { date, balance, userId } = req.body;
+        const { date, balance, bankRatio, userId } = req.body;
         const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
 
         const snapshotDate = new Date(date);
@@ -356,6 +394,7 @@ exports.updatePointOnTime = async (req, res) => {
 
         point.date = snapshotDate;
         point.balance = balance;
+        if (bankRatio !== undefined) point.bankRatio = bankRatio;
         await wallet.save();
         res.json(wallet);
     } catch (error) {

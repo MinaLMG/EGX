@@ -121,12 +121,14 @@ class WalletService {
   Future<void> addPointOnTime({
     required DateTime date,
     required double balance,
+    double bankRatio = 0,
     String? targetUserId,
   }) async {
     final headers = await _auth.authHeaders();
     final body = <String, dynamic>{
       'date': date.toUtc().toIso8601String(),
       'balance': balance,
+      'bankRatio': bankRatio,
       if (targetUserId != null) 'userId': targetUserId,
     };
     final response = await http.post(
@@ -143,12 +145,14 @@ class WalletService {
     required String id,
     required DateTime date,
     required double balance,
+    double bankRatio = 0,
     String? targetUserId,
   }) async {
     final headers = await _auth.authHeaders();
     final body = <String, dynamic>{
       'date': date.toUtc().toIso8601String(),
       'balance': balance,
+      'bankRatio': bankRatio,
       if (targetUserId != null) 'userId': targetUserId,
     };
     final response = await http.put(
