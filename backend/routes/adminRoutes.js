@@ -9,5 +9,6 @@ router.use(authorize('admin'));
 router.get('/settings', getSettings);
 router.post('/settings', updateSetting);
 router.get('/scraper-logs', getScraperLogs);
+router.post('/trigger-mubasher-trade', require('../controllers/adminController').triggerMubasherTrade);
 
 module.exports = router;

@@ -11,33 +11,27 @@ connectDB();
 
 const cron = require('node-cron');
 const scraperService = require('./services/scraperService');
-const mubasherPriceService = require('./services/mubasherPriceService');
+const mubasherTradeService = require('./services/mubasherTradeService');
 
 const app = express();
 
-// Schedule daily ArabicStock scrape at 00:00
+// Schedule ArabicStock scrape at 00:00
 cron.schedule('0 0 * * *', async () => {
     console.log('Running daily scheduled scrape...');
     await scraperService.scrapeAllArabicStocks();
 });
 
-// Schedule Mubasher price updates every 1 minute during EGX market hours (10:00 - 14:30 Cairo time)
-// Cron: Sunday to Thursday — timezone handles Cairo local time
-cron.schedule('*/1 10-14 * * 0-4', async () => {
-    // Cron fires 10:00-14:59 Cairo time; guard against the 14:30-14:59 tail
-    const now = new Date();
-    console.log('Running scheduled Mubasher price update at ', now);
-    // Use Cairo time (UTC+2 as per user)
-    // Convert current UTC time to Cairo time
-    const cairoTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
-    const hours = cairoTime.getHours();
-    const minutes = cairoTime.getMinutes();
+// Schedule Mubasher Trade daily monitoring session (9:50 AM Cairo, Sun-Thu)
+cron.schedule('10 12 * * 0-4', async () => {
+    console.log('Starting daily Mubasher Trade monitoring at 09:50 Cairo time');
+    await mubasherTradeService.startMonitoring();
+}, {
+    scheduled: true,
+    timezone: "Africa/Cairo"
+});
 
-    if (hours > 14 || (hours === 14 && minutes > 30)) return;
-
-    console.log('Running scheduled Mubasher price update...');
-    await mubasherPriceService.updatePricesFromMubasher();
-}, { scheduled: true, timezone: "Africa/Cairo" });
+// Legacy Mubasher price service (deactivated as per user request)
+// cron.schedule('*/1 10-14 * * 0-4', async () => { ... });
 
 // Middleware
 app.use(cors());

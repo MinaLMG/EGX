@@ -60,7 +60,7 @@ const _calcWalletInternal = async (userId) => {
             let suggestion = 'Hold';
             const threshold = wallet.rebalancingThreshold || 0.10;
             if (realMarketValue > 0) {
-                const deviation = Math.abs(gap) / realMarketValue;
+                const deviation = Math.abs(gap) / supposedValue;
                 if (deviation >= threshold) suggestion = gap > 0 ? 'Buy' : 'Sell';
             } else if (gap > 0) {
                 suggestion = 'Buy';

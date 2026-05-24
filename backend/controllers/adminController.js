@@ -27,3 +27,13 @@ exports.getScraperLogs = async (req, res) => {
     // Placeholder for later if needed
     res.json({ message: "Scraper logs not implemented yet" });
 };
+
+exports.triggerMubasherTrade = async (req, res) => {
+    try {
+        const mubasherTradeService = require('../services/mubasherTradeService');
+        const count = await mubasherTradeService.updatePrices();
+        res.json({ message: `Successfully updated ${count} stocks from Mubasher Trade.` });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};

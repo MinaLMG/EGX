@@ -70,9 +70,11 @@ class _WalletScreenState extends State<WalletScreen> {
           _profitMode = wallet['wallet']['profitMode'] ?? 'automatic';
           _manualProfitValueController.text =
               (wallet['wallet']['manualProfitValue'] ?? "").toString();
-          
-          _liquidityController.text = (wallet['wallet']['liquidityFactor'] ?? 0.0).toString();
-          _thresholdController.text = (wallet['wallet']['rebalancingThreshold'] ?? 0.10).toString();
+
+          _liquidityController.text =
+              (wallet['wallet']['liquidityFactor'] ?? 0.0).toString();
+          _thresholdController.text =
+              (wallet['wallet']['rebalancingThreshold'] ?? 0.10).toString();
         }
       });
     } catch (e) {
@@ -111,8 +113,12 @@ class _WalletScreenState extends State<WalletScreen> {
       );
       int qty = item != null ? item['quantity'] : 0;
 
-      await _walletService.updateItem(ticker, qty,
-          manualPrice: price, targetUserId: widget.targetUserId);
+      await _walletService.updateItem(
+        ticker,
+        qty,
+        manualPrice: price,
+        targetUserId: widget.targetUserId,
+      );
       await _loadData();
     } catch (e) {
       ScaffoldMessenger.of(
@@ -123,7 +129,11 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _removeStock(String ticker) async {
     try {
-      await _walletService.updateItem(ticker, 0, targetUserId: widget.targetUserId);
+      await _walletService.updateItem(
+        ticker,
+        0,
+        targetUserId: widget.targetUserId,
+      );
       await _loadData();
     } catch (e) {
       ScaffoldMessenger.of(
@@ -179,35 +189,52 @@ class _WalletScreenState extends State<WalletScreen> {
       _valController.clear();
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Future<void> _deleteTransaction(String id) async {
     try {
-      await _walletService.deleteTransaction(id, targetUserId: widget.targetUserId);
+      await _walletService.deleteTransaction(
+        id,
+        targetUserId: widget.targetUserId,
+      );
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   // Snapshot actions
   Future<void> _setActiveSnapshot(String? id) async {
     try {
-      await _walletService.setActivePointOnTime(id, targetUserId: widget.targetUserId);
+      await _walletService.setActivePointOnTime(
+        id,
+        targetUserId: widget.targetUserId,
+      );
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
   Future<void> _deleteSnapshot(String id) async {
     try {
-      await _walletService.deletePointOnTime(id, targetUserId: widget.targetUserId);
+      await _walletService.deletePointOnTime(
+        id,
+        targetUserId: widget.targetUserId,
+      );
       await _loadData();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
 
@@ -269,7 +296,9 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 final bal = double.tryParse(balanceCtrl.text);
@@ -295,8 +324,9 @@ class _WalletScreenState extends State<WalletScreen> {
                   }
                   await _loadData();
                 } catch (e) {
-                  ScaffoldMessenger.of(context)
-                      .showSnackBar(SnackBar(content: Text('Error: $e')));
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Error: $e')));
                 }
               },
               child: Text('Save'),
@@ -398,7 +428,7 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ),
           SizedBox(height: 8),
-          if (_mode == 'manual') 
+          if (_mode == 'manual')
             Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: ElevatedButton.icon(
@@ -408,7 +438,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
                   foregroundColor: Colors.white,
-                  minimumSize: Size(double.infinity, 45)
+                  minimumSize: Size(double.infinity, 45),
                 ),
               ),
             ),
@@ -585,7 +615,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Text(
-                          '${((currentPrice / targetPrice) * 100).toStringAsFixed(1)}% to target',
+                          '${((targetPrice - currentPrice) / currentPrice * 100).toStringAsFixed(1)}% to target',
                           style: TextStyle(fontSize: 10, color: Colors.grey),
                         ),
                       ),
@@ -763,7 +793,9 @@ class _WalletScreenState extends State<WalletScreen> {
                   leading: GestureDetector(
                     onTap: () => _setActiveSnapshot(isActive ? null : snapId),
                     child: Icon(
-                      isActive ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                      isActive
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
                       color: isActive ? Colors.indigo : Colors.grey,
                     ),
                   ),
@@ -778,7 +810,9 @@ class _WalletScreenState extends State<WalletScreen> {
                     '${date.toString().split(' ')[0]}${isActive ? '  •  ACTIVE' : ''}\nBank Ratio: ${snap['bankRatio'] ?? 0}%',
                     style: TextStyle(
                       color: isActive ? Colors.indigo : Colors.black54,
-                      fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isActive
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                       fontSize: 11,
                     ),
                   ),
@@ -791,7 +825,11 @@ class _WalletScreenState extends State<WalletScreen> {
                               onPressed: () => _showSnapshotDialog(snap: snap),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete, size: 18, color: Colors.red),
+                              icon: Icon(
+                                Icons.delete,
+                                size: 18,
+                                color: Colors.red,
+                              ),
                               onPressed: () => _deleteSnapshot(snapId),
                             ),
                           ],
@@ -822,7 +860,10 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildProfitSettingsSection() {
     return ExpansionTile(
-      title: Text('Revenue Calculation Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: Text(
+        'Revenue Calculation Mode',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
       subtitle: Text('Current Value Source: ${_profitMode.toUpperCase()}'),
       leading: Icon(Icons.tune, color: Colors.deepPurple),
       children: [
@@ -832,10 +873,19 @@ class _WalletScreenState extends State<WalletScreen> {
             children: [
               DropdownButtonFormField<String>(
                 value: _profitMode,
-                decoration: InputDecoration(labelText: 'Calculation Source', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Calculation Source',
+                  border: OutlineInputBorder(),
+                ),
                 items: [
-                  DropdownMenuItem(value: 'automatic', child: Text('Automatic (Wallet + Stocks)')),
-                  DropdownMenuItem(value: 'manual', child: Text('Manual (User Entered Value)')),
+                  DropdownMenuItem(
+                    value: 'automatic',
+                    child: Text('Automatic (Wallet + Stocks)'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'manual',
+                    child: Text('Manual (User Entered Value)'),
+                  ),
                 ],
                 onChanged: (val) => setState(() => _profitMode = val!),
               ),
@@ -843,7 +893,10 @@ class _WalletScreenState extends State<WalletScreen> {
                 SizedBox(height: 12),
                 TextField(
                   controller: _manualProfitValueController,
-                  decoration: InputDecoration(labelText: 'Custom Total Wallet Value (EGP)', border: OutlineInputBorder()),
+                  decoration: InputDecoration(
+                    labelText: 'Custom Total Wallet Value (EGP)',
+                    border: OutlineInputBorder(),
+                  ),
                   keyboardType: TextInputType.number,
                 ),
               ],
@@ -937,7 +990,9 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildActiveSnapshotBanner(Map<String, dynamic> snap) {
-    final date = DateTime.parse(snap['date']).toLocal().toString().split(' ')[0];
+    final date = DateTime.parse(
+      snap['date'],
+    ).toLocal().toString().split(' ')[0];
     final balance = (snap['balance'] as num).toStringAsFixed(0);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1205,7 +1260,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 onChanged: (val) => setState(() => _mode = val!),
               ),
               SizedBox(height: 12),
-               SizedBox(height: 12),
+              SizedBox(height: 12),
               /* Manual Total Override removed from portfolio - functionality moved to profit context only */
               TextField(
                 controller: _cashController,
@@ -1632,7 +1687,7 @@ class _WalletScreenState extends State<WalletScreen> {
     if (_walletData?['analysis'] == null) return;
     final List items = _walletData!['analysis'];
     final controllers = <String, TextEditingController>{};
-    
+
     for (var item in items) {
       controllers[item['ticker']] = TextEditingController(
         text: item['currentPrice'].toString(),
@@ -1666,7 +1721,10 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final Map<String, double> prices = {};
@@ -1676,10 +1734,15 @@ class _WalletScreenState extends State<WalletScreen> {
               });
               Navigator.pop(ctx);
               try {
-                await _walletService.updateManualPricesBulk(prices, targetUserId: widget.targetUserId);
+                await _walletService.updateManualPricesBulk(
+                  prices,
+                  targetUserId: widget.targetUserId,
+                );
                 _loadData();
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
             child: Text('Save All'),
@@ -1739,29 +1802,39 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange.shade800,
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              bool confirm = await showDialog(
+              bool confirm =
+                  await showDialog(
                     context: context,
                     builder: (innerCtx) => AlertDialog(
                       title: Text('Are you sure?'),
                       content: Text(
-                          'Those data are sensitive and needs experience to be determined are you sure about changing?'),
+                        'Those data are sensitive and needs experience to be determined are you sure about changing?',
+                      ),
                       actions: [
                         TextButton(
-                            onPressed: () => Navigator.pop(innerCtx, false),
-                            child: Text('No')),
+                          onPressed: () => Navigator.pop(innerCtx, false),
+                          child: Text('No'),
+                        ),
                         TextButton(
-                            onPressed: () => Navigator.pop(innerCtx, true),
-                            child: Text('Yes',
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold))),
+                          onPressed: () => Navigator.pop(innerCtx, true),
+                          child: Text(
+                            'Yes',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ) ??
