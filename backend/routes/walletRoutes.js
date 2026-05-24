@@ -11,6 +11,7 @@ const {
     addPointOnTime,
     updatePointOnTime,
     deletePointOnTime,
+    updateManualPricesBulk
 } = require('../controllers/walletController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -19,6 +20,7 @@ router.use(protect); // All wallet routes are protected
 router.get('/', getWallet);
 router.post('/items', updateWalletItem);
 router.patch('/', updateWalletSettings);
+router.put('/manual-prices', updateManualPricesBulk);
 
 // Admin simulate wallet
 router.get('/admin/:userId', authorize('admin'), getWalletForUser);

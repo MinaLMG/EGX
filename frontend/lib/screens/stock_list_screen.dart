@@ -145,9 +145,7 @@ class _StockListScreenState extends State<StockListScreen> {
               return Center(child: Text('No stocks found'));
             }
 
-            final List<Stock> sortedStocks = List.from(snapshot.data!);
-            // Default sort by score descending
-            sortedStocks.sort((a, b) => b.totalScore.compareTo(a.totalScore));
+            final List<Stock> sortedStocks = snapshot.data!;
 
             return ListView.builder(
               padding: EdgeInsets.all(16),

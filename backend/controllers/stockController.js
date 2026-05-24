@@ -13,7 +13,7 @@ const arabicStockService = require('../services/arabicStockService');
 // @route   GET /api/stocks
 exports.getStocks = async (req, res) => {
     try {
-        const stocks = await Stock.find().sort({ total_score: -1 });
+        const stocks = await Stock.find().sort({ total_score: -1, ticker: 1 });
         res.json(stocks);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -84,7 +84,7 @@ exports.createStock = async (req, res) => {
 // @route   GET /api/stocks/admin/matrix
 exports.getStocksMatrix = async (req, res) => {
     try {
-        const stocks = await Stock.find().sort({ total_score: -1 });
+        const stocks = await Stock.find().sort({ total_score: -1, ticker: 1 });
         const users = await User.find({ role: 'user' }).select('name username');
         const wallets = await Wallet.find().populate('items.stock');
 
@@ -120,7 +120,7 @@ exports.getStocksMatrix = async (req, res) => {
 // @route   GET /api/stocks/admin/export-excel
 exports.getStocksExcel = async (req, res) => {
     try {
-        const stocks = await Stock.find().sort({ total_score: -1 });
+        const stocks = await Stock.find().sort({ total_score: -1, ticker: 1 });
         const bfValues = await BFValue.find();
         const fundamentalRecs = await FundamentalRecommendation.find();
         const technicalRecs = await TechnicalRecommendation.find();

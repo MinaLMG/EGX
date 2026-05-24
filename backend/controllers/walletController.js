@@ -11,17 +11,12 @@ const _calcWalletInternal = async (userId) => {
     const itemsCount = wallet.items.length;
     let totalVal = wallet.cash;
 
-    // 1. Calculate Current Portfolio Value
     wallet.items.forEach(item => {
         const price = (wallet.mode === 'manual' && item.manualPrice)
             ? item.manualPrice
             : (item.stock.price || 0);
         totalVal += (item.quantity * price);
     });
-
-    if (wallet.mode === 'manual' && wallet.manualTotalOverride) {
-        totalVal = wallet.manualTotalOverride;
-    }
 
     // 2. Rebalancing Analysis
     const sortedItems = [...wallet.items].sort((a, b) => {
@@ -71,6 +66,7 @@ const _calcWalletInternal = async (userId) => {
                 ticker: item.stock.ticker,
                 name: item.stock.name,
                 quantity: item.quantity,
+                rank: i + 1, // Store original score-based rank
                 currentPrice,
                 realMarketValue,
                 supposedValue,
@@ -144,7 +140,7 @@ const _calcWalletInternal = async (userId) => {
     const walletEffectiveValue = totalDuration > 0 ? (totalEffectiveValue / totalDuration) : 0;
 
     // Use the separate profit mode/value
-    const currentValueForProfit = (wallet.profitMode === 'manual' && wallet.manualProfitValue !== undefined)
+    const currentValueForProfit = (wallet.profitMode === 'manual' && wallet.manualProfitValue)
         ? wallet.manualProfitValue
         : totalVal;
 
@@ -431,6 +427,32 @@ exports.deletePointOnTime = async (req, res) => {
         wallet.pointsOnTime.pull(req.params.id);
         await wallet.save();
         res.json(wallet);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+// @desc    Update manual prices in bulk
+// @route   PUT /api/wallet/manual-prices
+exports.updateManualPricesBulk = async (req, res) => {
+    try {
+        const { prices, userId } = req.body; // prices is { ticker: price }
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
+
+        const wallet = await Wallet.findOne({ user: targetId }).populate('items.stock');
+        if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
+
+        if (prices && typeof prices === 'object') {
+            Object.keys(prices).forEach(ticker => {
+                const item = wallet.items.find(i => i.stock.ticker === ticker);
+                if (item) {
+                    item.manualPrice = prices[ticker];
+                }
+            });
+            await wallet.save();
+        }
+
+        const data = await _calcWalletInternal(targetId);
+        res.json(data);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

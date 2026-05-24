@@ -389,6 +389,20 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ),
           SizedBox(height: 8),
+          if (_mode == 'manual') 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: ElevatedButton.icon(
+                onPressed: _showBulkPriceDialog,
+                icon: Icon(Icons.edit_note),
+                label: Text('Bulk Edit Manual Prices'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  foregroundColor: Colors.white,
+                  minimumSize: Size(double.infinity, 45)
+                ),
+              ),
+            ),
           _buildAnalysisList(onlyPending: false),
         ],
       ),
@@ -1182,17 +1196,8 @@ class _WalletScreenState extends State<WalletScreen> {
                 onChanged: (val) => setState(() => _mode = val!),
               ),
               SizedBox(height: 12),
-              if (_mode == 'manual') ...[
-                TextField(
-                  controller: _totalOverrideController,
-                  decoration: InputDecoration(
-                    labelText: 'Manual Total Portfolio Value (EGP)',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                SizedBox(height: 12),
-              ],
+               SizedBox(height: 12),
+              /* Manual Total Override removed from portfolio - functionality moved to profit context only */
               TextField(
                 controller: _cashController,
                 decoration: InputDecoration(
@@ -1302,6 +1307,10 @@ class _WalletScreenState extends State<WalletScreen> {
     items.sort((a, b) {
       dynamic valA, valB;
       switch (_sortCriteria) {
+        case 'ticker':
+          valA = a['ticker'];
+          valB = b['ticker'];
+          break;
         case 'supposed':
           valA = a['supposedValue'];
           valB = b['supposedValue'];
@@ -1365,7 +1374,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     suggestion,
                   ).withOpacity(0.15),
                   child: Text(
-                    '${index + 1}',
+                    '${item['rank']}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: _suggestionColor(suggestion),
@@ -1459,6 +1468,7 @@ class _WalletScreenState extends State<WalletScreen> {
             style: TextStyle(fontSize: 12, color: Colors.black54),
           ),
           SizedBox(width: 8),
+          _sortChip('Ticker', 'ticker'),
           _sortChip('Supposed', 'supposed'),
           _sortChip('Real', 'real'),
           _sortChip('% Diff', 'deviation'),
@@ -1602,6 +1612,67 @@ class _WalletScreenState extends State<WalletScreen> {
             SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showBulkPriceDialog() {
+    if (_walletData?['analysis'] == null) return;
+    final List items = _walletData!['analysis'];
+    final controllers = <String, TextEditingController>{};
+    
+    for (var item in items) {
+      controllers[item['ticker']] = TextEditingController(
+        text: item['currentPrice'].toString(),
+      );
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Bulk Edit Manual Prices'),
+        content: Container(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: items.length,
+            itemBuilder: (ctx, i) {
+              final ticker = items[i]['ticker'];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: TextField(
+                  controller: controllers[ticker],
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: ticker,
+                    border: OutlineInputBorder(),
+                    prefixText: 'EGP ',
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final Map<String, double> prices = {};
+              controllers.forEach((ticker, ctrl) {
+                final val = double.tryParse(ctrl.text);
+                if (val != null) prices[ticker] = val;
+              });
+              Navigator.pop(ctx);
+              try {
+                await _walletService.updateManualPricesBulk(prices, targetUserId: widget.targetUserId);
+                _loadData();
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: Text('Save All'),
+          ),
+        ],
       ),
     );
   }
