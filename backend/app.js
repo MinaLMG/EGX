@@ -12,26 +12,50 @@ connectDB();
 const cron = require('node-cron');
 const scraperService = require('./services/scraperService');
 const mubasherTradeService = require('./services/mubasherTradeService');
+const mubasherPriceService = require('./services/mubasherPriceService');
 
 const app = express();
 
-// Schedule ArabicStock scrape at 00:00
+// --- Local Cron Schedules (Disabled for Vercel Serverless) ---
+// Note: These will not work on Vercel. Use vercel.json + the /api/cron routes instead.
+/*
 cron.schedule('0 0 * * *', async () => {
     console.log('Running daily scheduled scrape...');
     await scraperService.scrapeAllArabicStocks();
 });
 
-// Schedule Mubasher Trade daily monitoring session (9:50 AM Cairo, Sun-Thu)
-cron.schedule('50 9 * * 0-4', async () => {
+cron.schedule('49 13 * * 0-4', async () => {
     console.log('Starting daily Mubasher Trade monitoring at 09:50 Cairo time');
     await mubasherTradeService.startMonitoring();
 }, {
     scheduled: true,
     timezone: "Africa/Cairo"
 });
+*/
 
-// Legacy Mubasher price service (deactivated as per user request)
-// cron.schedule('*/1 10-14 * * 0-4', async () => { ... });
+// --- Vercel Cron Endpoints ---
+app.get('/api/cron/update-prices', async (req, res) => {
+    const cairoTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+    console.log('[Cron] Triggering price update at', cairoTime.toLocaleTimeString());
+    try {
+        // Use the fast API-based service for minute-by-minute updates
+        await mubasherPriceService.updatePricesFromMubasher();
+        res.status(200).json({ success: true, message: 'Prices updated via API' });
+    } catch (error) {
+        console.error('[Cron Error]:', error.message);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/cron/daily-scrape', async (req, res) => {
+    console.log('[Cron] Triggered daily fair value scrape');
+    try {
+        await scraperService.scrapeAllArabicStocks();
+        res.status(200).json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // Middleware
 app.use(cors());
