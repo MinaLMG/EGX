@@ -6,25 +6,16 @@ const jwt = require('jsonwebtoken');
 exports.register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
-        console.log(req.body);
         const userExists = await User.findOne({ email });
         if (userExists) {
             return res.status(400).json({ message: 'User already exists' });
         }
-        console.log(userExists);
-        const user = await User.create({
-            name,
-            email,
-            password,
-            role: 'user' // Default to user
-        });
-        console.log(user);
+        const user = await User.create({ name, email, password, role: 'user' });
         res.status(201).json({
             message: 'Registration successful. Waiting for admin approval.',
             user: { id: user._id, name: user.name, email: user.email, status: user.status }
         });
     } catch (error) {
-        console.log(error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -51,7 +42,7 @@ exports.login = async (req, res) => {
 
         const token = jwt.sign(
             { id: user._id, role: user.role },
-            process.env.JWT_SECRET || 'secret',
+            process.env.JWT_SECRET,
             { expiresIn: '30d' }
         );
 

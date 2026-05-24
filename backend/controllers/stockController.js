@@ -4,9 +4,7 @@ const Wallet = require('../models/Wallet');
 const BFValue = require('../models/BFValue');
 const FundamentalRecommendation = require('../models/FundamentalRecommendation');
 const TechnicalRecommendation = require('../models/TechnicalRecommendation');
-const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
-const fairValueService = require('../services/fairValueService');
 const arabicStockService = require('../services/arabicStockService');
 const ConfigHelper = require('../utils/configHelper');
 

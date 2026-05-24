@@ -32,11 +32,11 @@ class MubasherTradeService {
         const username = process.env.MUBASHER_TRADE_USERNAME;
         const password = process.env.MUBASHER_TRADE_PASSWORD;
         console.log('Logging in to Mubasher Trade...');
-        await this.page.goto('https://rubixegypt.mubashertrade.com/web/login', { 
-            waitUntil: 'domcontentloaded', 
-            timeout: 60000 
+        await this.page.goto('https://rubixegypt.mubashertrade.com/web/login', {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000
         });
-        
+
         try {
             await this.page.waitForSelector('#form-input-live-u', { timeout: 30000 });
             await this.page.type('#form-input-live-u', username, { delay: 50 });
@@ -57,7 +57,7 @@ class MubasherTradeService {
             // 1. Navigation to Watchlist
             const nav = () => {
                 const btn = Array.from(document.querySelectorAll('div, span, mat-list-item'))
-                                 .find(d => d.innerText?.trim() === 'Watchlist');
+                    .find(d => d.innerText?.trim() === 'Watchlist');
                 if (btn) { btn.click(); return true; }
                 return false;
             };
@@ -69,9 +69,9 @@ class MubasherTradeService {
             }
 
             // 2. Viewport and Column Discovery
-            const viewport = document.querySelector('.ag-body-viewport, .ag-center-cols-viewport') || 
-                             Array.from(document.querySelectorAll('div')).find(d => d.scrollHeight > d.clientHeight && d.className.includes('ag-'));
-            
+            const viewport = document.querySelector('.ag-body-viewport, .ag-center-cols-viewport') ||
+                Array.from(document.querySelectorAll('div')).find(d => d.scrollHeight > d.clientHeight && d.className.includes('ag-'));
+
             const headers = Array.from(document.querySelectorAll('.ag-header-cell'));
             let sCol = "0", pCol = "1";
             headers.forEach(h => {
@@ -87,13 +87,13 @@ class MubasherTradeService {
                 document.querySelectorAll('.ag-row').forEach(row => {
                     const id = row.getAttribute('row-id') || row.getAttribute('aria-rowindex');
                     if (!id) return;
-                    
+
                     if (!results.has(id)) results.set(id, { ticker: null, price: null });
                     const entry = results.get(id);
-                    
+
                     const tCell = row.querySelector(`[col-id="${sCol}"]`) || row.querySelector('[col-id="0"]');
                     const pCell = row.querySelector(`[col-id="${pCol}"]`) || row.querySelector('[col-id="1"]');
-                    
+
                     if (tCell && !entry.ticker) {
                         const rawTicker = tCell.innerText.trim().split(/\s/)[0];
                         if (rawTicker.length > 1) entry.ticker = rawTicker;
@@ -133,16 +133,26 @@ class MubasherTradeService {
 
         if (!priceData || priceData.length === 0) return 0;
 
-        let updated = 0;
-        for (const item of priceData) {
-            const res = await Stock.findOneAndUpdate(
-                { ticker: item.ticker.toUpperCase() },
-                { price: item.price, lastUpdated: new Date() },
-                { upsert: true, returnDocument: 'after' }
-            );
-            if (res) updated++;
+        const now = new Date();
+
+        // Single bulkWrite instead of one DB call per stock
+        const bulkOps = priceData.map(item => ({
+            updateOne: {
+                filter: { ticker: item.ticker.toUpperCase() },
+                update: { $set: { price: item.price, lastUpdated: now } },
+                upsert: true
+            }
+        }));
+
+        const result = await Stock.bulkWrite(bulkOps);
+        const updated = result.modifiedCount + result.upsertedCount;
+
+        // Debounce: only recalculate scores once per scrape session (not per stock)
+        if (updated > 0) {
+            clearTimeout(this._scoreDebounce);
+            this._scoreDebounce = setTimeout(() => ScoringService.calculateAllScores(), 2000);
         }
-        if (updated > 0) await ScoringService.calculateAllScores();
+
         return updated;
     }
 

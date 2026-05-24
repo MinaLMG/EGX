@@ -317,6 +317,7 @@ exports.addTransaction = async (req, res) => {
         const { date, value, type, userId } = req.body;
         const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
         const wallet = await Wallet.findOne({ user: targetId });
+        if (!wallet) return res.status(404).json({ message: 'Wallet not found. Add a stock first to create one.' });
         wallet.transactions.push({ date, value, type });
         await wallet.save();
         res.json(wallet);

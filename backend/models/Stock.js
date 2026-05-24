@@ -31,4 +31,8 @@ const StockSchema = new mongoose.Schema({
     total_score: { type: Number, default: 0 }
 });
 
+// Index matching the sort used in getStocks / getStocksMatrix / scoringService
+// Converts full-collection-scan → index-scan for every stock list query
+StockSchema.index({ total_score: -1, ticker: 1 });
+
 module.exports = mongoose.model('Stock', StockSchema);

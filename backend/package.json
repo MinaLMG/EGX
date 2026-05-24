@@ -23,8 +23,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
     "node-cron": "^4.2.1",
-    "puppeteer": "^25.0.4",
-    "xlsx": "^0.18.5"
+    "puppeteer": "^25.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
