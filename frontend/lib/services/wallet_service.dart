@@ -20,7 +20,7 @@ class WalletService {
     }
   }
 
-  Future<void> updateItem(String ticker, int quantity, {double? manualPrice}) async {
+  Future<void> updateItem(String ticker, int quantity, {double? manualPrice, String? targetUserId}) async {
     final headers = await _auth.authHeaders();
     final response = await http.post(
       Uri.parse('$_baseUrl/items'),
@@ -29,6 +29,7 @@ class WalletService {
         'ticker': ticker,
         'quantity': quantity,
         'manualPrice': manualPrice,
+        if (targetUserId != null) 'userId': targetUserId,
       }),
     );
     if (response.statusCode != 200) {

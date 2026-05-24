@@ -243,17 +243,17 @@ exports.getWalletForUser = async (req, res) => {
 // @route   POST /api/wallet/items
 exports.updateWalletItem = async (req, res) => {
     try {
-        const { ticker, quantity, manualPrice } = req.body;
+        const { ticker, quantity, manualPrice, userId } = req.body;
+        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
         const stock = await Stock.findOne({ ticker: ticker.toUpperCase() });
         if (!stock) return res.status(404).json({ message: 'Stock not found' });
 
-        let wallet = await Wallet.findOne({ user: req.user._id });
+        let wallet = await Wallet.findOne({ user: targetId });
         if (!wallet) {
-            wallet = new Wallet({ user: req.user._id, items: [] });
+            wallet = new Wallet({ user: targetId, items: [] });
         }
 
         const itemIndex = wallet.items.findIndex(item => item.stock.toString() === stock._id.toString());
-
         if (itemIndex > -1) {
             if (quantity === 0) {
                 wallet.items.splice(itemIndex, 1);
@@ -268,8 +268,8 @@ exports.updateWalletItem = async (req, res) => {
                 manualPrice
             });
         }
-
         await wallet.save();
+
         await wallet.populate('items.stock');
         res.json(wallet);
     } catch (error) {

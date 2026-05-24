@@ -89,6 +89,7 @@ class _WalletScreenState extends State<WalletScreen> {
       await _walletService.updateItem(
         _selectedStock!.ticker,
         int.parse(_qtyController.text),
+        targetUserId: widget.targetUserId,
       );
       _qtyController.clear();
       setState(() => _selectedStock = null);
@@ -110,7 +111,8 @@ class _WalletScreenState extends State<WalletScreen> {
       );
       int qty = item != null ? item['quantity'] : 0;
 
-      await _walletService.updateItem(ticker, qty, manualPrice: price);
+      await _walletService.updateItem(ticker, qty,
+          manualPrice: price, targetUserId: widget.targetUserId);
       await _loadData();
     } catch (e) {
       ScaffoldMessenger.of(
@@ -121,7 +123,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _removeStock(String ticker) async {
     try {
-      await _walletService.updateItem(ticker, 0);
+      await _walletService.updateItem(ticker, 0, targetUserId: widget.targetUserId);
       await _loadData();
     } catch (e) {
       ScaffoldMessenger.of(
@@ -1592,6 +1594,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     item['ticker'],
                     newQty,
                     manualPrice: _mode == 'manual' ? newPrice : null,
+                    targetUserId: widget.targetUserId,
                   );
                   _loadData();
                 }
