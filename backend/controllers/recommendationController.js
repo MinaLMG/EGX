@@ -79,7 +79,7 @@ exports.updateFundamental = async (req, res) => {
         const recommendation = await FundamentalRecommendation.findOneAndUpdate(
             { stock: stock._id },
             { target },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         ).populate('stock');
 
         // Recalculate scores
@@ -134,7 +134,7 @@ exports.updateTechnicalById = async (req, res) => {
         const recommendation = await TechnicalRecommendation.findByIdAndUpdate(
             req.params.id,
             { target, notes },
-            { new: true }
+            { returnDocument: 'after' }
         ).populate('stock');
 
         // Recalculate scores

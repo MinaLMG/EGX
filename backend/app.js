@@ -26,6 +26,7 @@ cron.schedule('0 0 * * *', async () => {
 cron.schedule('*/1 10-14 * * 0-4', async () => {
     // Cron fires 10:00-14:59 Cairo time; guard against the 14:30-14:59 tail
     const now = new Date();
+    console.log('Running scheduled Mubasher price update at ', now);
     // Use Cairo time (UTC+2 as per user)
     // Convert current UTC time to Cairo time
     const cairoTime = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));

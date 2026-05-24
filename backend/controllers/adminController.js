@@ -15,7 +15,7 @@ exports.updateSetting = async (req, res) => {
         const setting = await SystemConfig.findOneAndUpdate(
             { key },
             { value, description },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
         res.json(setting);
     } catch (err) {

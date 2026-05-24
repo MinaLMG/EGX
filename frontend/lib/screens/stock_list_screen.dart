@@ -21,6 +21,9 @@ class _StockListScreenState extends State<StockListScreen> {
   late Future<List<Stock>> futureStocks;
   Set<String> walletTickers = {};
   bool _isAdmin = false;
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
+  String _searchQuery = "";
 
   @override
   void initState() {
@@ -89,13 +92,39 @@ class _StockListScreenState extends State<StockListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'EGX Fair Values',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search ticker or name...',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                style: TextStyle(color: Colors.white, fontSize: 18),
+                onChanged: (val) => setState(() => _searchQuery = val),
+              )
+            : Text(
+                'EGX Fair Values',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
         backgroundColor: Colors.deepPurple,
         elevation: 0,
         actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                if (_isSearching) {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _searchQuery = "";
+                } else {
+                  _isSearching = true;
+                }
+              });
+            },
+          ),
           if (_isAdmin)
             IconButton(
               icon: Icon(Icons.link),
@@ -115,6 +144,12 @@ class _StockListScreenState extends State<StockListScreen> {
                   builder: (context) => AdminStockMatrixScreen(),
                 ),
               ),
+            ),
+          if (_isAdmin)
+            IconButton(
+              icon: Icon(Icons.add_box),
+              tooltip: 'Add New Ticker',
+              onPressed: _showAddStockDialog,
             ),
           if (_isAdmin)
             IconButton(
@@ -145,7 +180,11 @@ class _StockListScreenState extends State<StockListScreen> {
               return Center(child: Text('No stocks found'));
             }
 
-            final List<Stock> sortedStocks = snapshot.data!;
+            final List<Stock> sortedStocks = snapshot.data!.where((s) {
+              final q = _searchQuery.toUpperCase();
+              return s.ticker.toUpperCase().contains(q) ||
+                  (s.name?.toUpperCase().contains(q) ?? false);
+            }).toList();
 
             return ListView.builder(
               padding: EdgeInsets.all(16),
@@ -358,6 +397,70 @@ class _StockListScreenState extends State<StockListScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  void _showAddStockDialog() {
+    final _tickerController = TextEditingController();
+    final _nameController = TextEditingController();
+    final _priceController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Add New Ticker'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _tickerController,
+              decoration: InputDecoration(
+                labelText: 'Ticker (e.g. ABUK)',
+                hintText: 'Uppercase ticker',
+              ),
+              textCapitalization: TextCapitalization.characters,
+            ),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Company Name',
+              ),
+            ),
+            TextField(
+              controller: _priceController,
+              decoration: InputDecoration(
+                labelText: 'Initial Price (EGP)',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final ticker = _tickerController.text.trim().toUpperCase();
+                final name = _nameController.text.trim();
+                final price = double.tryParse(_priceController.text) ?? 0;
+
+                if (ticker.isEmpty) throw 'Ticker cannot be empty';
+
+                await apiService.createStock(ticker, name, price);
+                Navigator.pop(ctx);
+                _refresh();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Stock $ticker added successfully')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: Text('Create'),
+          ),
+        ],
       ),
     );
   }

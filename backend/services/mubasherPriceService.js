@@ -78,14 +78,14 @@ exports.updatePricesFromMubasher = async () => {
                     );
                 }
             }
-
+            //(node:21820) [MONGOOSE] Warning: mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.
             const result = await Stock.findOneAndUpdate(
                 { ticker },
                 {
                     price: priceToUse,
                     lastUpdated: new Date()
                 },
-                { new: true }
+                { returnDocument: 'after' }
             );
 
             if (result) updatedCount++;
@@ -104,7 +104,7 @@ exports.updatePricesFromMubasher = async () => {
         // 2. Identify Mubasher Prices that didn't match any ticker
         const matchedMubasherNames = new Set();
         matches.forEach(m => matchedMubasherNames.add(m.name));
-        
+
         const unmatchedMubasherNames = priceData
             .filter(item => !matchedMubasherNames.has(item.name) && !matchMap[item.name])
             .map(item => item.name);
@@ -115,13 +115,13 @@ exports.updatePricesFromMubasher = async () => {
             ...unmatchedTickers.map(t => ({ type: 'stock', identifier: t })),
             ...unmatchedMubasherNames.map(n => ({ type: 'mubasher_price', identifier: n }))
         ];
-        
+
         if (unmatchedEntries.length > 0) {
             await MubasherUnmatched.insertMany(unmatchedEntries);
             console.log(`Saved ${unmatchedEntries.length} unmatched items.`);
         }
         // -----------------------------
-        
+
         // Recalculate scores with new prices
         await ScoringService.calculateAllScores();
     } catch (err) {

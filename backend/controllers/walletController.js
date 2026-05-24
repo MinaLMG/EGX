@@ -293,7 +293,7 @@ exports.updateWalletSettings = async (req, res) => {
         if (manualProfitValue !== undefined) update.manualProfitValue = manualProfitValue;
         if (liquidityFactor !== undefined) update.liquidityFactor = liquidityFactor;
         if (rebalancingThreshold !== undefined) update.rebalancingThreshold = rebalancingThreshold;
-        
+
         // Handle snapshot activation/deactivation
         if (activePointOnTimeId !== undefined) {
             update.activePointOnTimeId = activePointOnTimeId || null;
@@ -302,7 +302,7 @@ exports.updateWalletSettings = async (req, res) => {
         const wallet = await Wallet.findOneAndUpdate(
             { user: targetId },
             update,
-            { new: true, upsert: true }
+            { returnDocument: 'after', upsert: true }
         ).populate('items.stock');
         res.json(wallet);
     } catch (error) {

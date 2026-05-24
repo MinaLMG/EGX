@@ -46,7 +46,7 @@ exports.matchArabicStock = async (req, res) => {
         const stock = await Stock.findOneAndUpdate(
             { ticker: ticker.toUpperCase() },
             { arabic_stock_getter: url },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         if (!stock) return res.status(404).json({ message: 'Stock not found' });

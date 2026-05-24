@@ -53,7 +53,7 @@ const importExcel = async () => {
             await Stock.findOneAndUpdate(
                 { ticker },
                 { ticker }, // Only setting ticker for now as per instructions
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: 'after' }
             );
         }
         console.log(`Imported/Updated ${uniqueTickers.size} unique stocks.`);

@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const MubasherMatchSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     ticker: {
         type: String,

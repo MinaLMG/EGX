@@ -17,16 +17,18 @@ exports.getUnmatched = async (req, res) => {
 exports.createMatch = async (req, res) => {
     try {
         const { ticker, mubasherName } = req.body;
-        
+
         // 1. Create the permanent match
+        // Use name as the unique key because one Mubasher name should map to one ticker,
+        // but one ticker can be associated with multiple Mubasher names (e.g. GDRs).
         const match = await MubasherMatch.findOneAndUpdate(
-            { ticker: ticker.toUpperCase() },
             { name: mubasherName },
-            { upsert: true, new: true }
+            { ticker: ticker.toUpperCase() },
+            { upsert: true, returnDocument: 'after' }
         );
 
         // 2. Clear from unmatched (optional but cleaner)
-        await MubasherUnmatched.deleteMany({ 
+        await MubasherUnmatched.deleteMany({
             $or: [
                 { identifier: ticker.toUpperCase(), type: 'stock' },
                 { identifier: mubasherName, type: 'mubasher_price' }
@@ -39,6 +41,7 @@ exports.createMatch = async (req, res) => {
 
         res.json({ message: 'Match created successfully', match });
     } catch (error) {
+        console.log("error", error);
         res.status(500).json({ error: error.message });
     }
 };

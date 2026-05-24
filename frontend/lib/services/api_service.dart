@@ -77,4 +77,22 @@ class ApiService {
       throw Exception('Failed to match stock');
     }
   }
+
+  Future<void> createStock(String ticker, String name, double price) async {
+    final headers = await _auth.authHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/stocks'),
+      headers: headers,
+      body: jsonEncode({
+        'ticker': ticker,
+        'name': name,
+        'price': price,
+      }),
+    );
+
+    if (response.statusCode != 201) {
+      final body = json.decode(response.body);
+      throw Exception(body['message'] ?? 'Failed to create stock');
+    }
+  }
 }
