@@ -361,9 +361,10 @@ class _WalletScreenState extends State<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userNameFromData = _walletData?['wallet']?['user']?['name'];
     final title = widget.targetUserName != null
         ? 'Simulating: ${widget.targetUserName}'
-        : 'My Wallet';
+        : (userNameFromData != null ? "$userNameFromData's Wallet" : 'My Wallet');
     return DefaultTabController(
       length: 4,
       child: Scaffold(

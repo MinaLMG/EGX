@@ -3,7 +3,7 @@ const Stock = require('../models/Stock');
 
 // Helper to calculate wallet metrics (used by user and admin)
 const _calcWalletInternal = async (userId) => {
-    let wallet = await Wallet.findOne({ user: userId }).populate('items.stock');
+    let wallet = await Wallet.findOne({ user: userId }).populate('items.stock').populate('user', 'name');
     if (!wallet) {
         wallet = await Wallet.create({ user: userId, items: [], transactions: [] });
     }
