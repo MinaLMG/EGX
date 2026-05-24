@@ -1,4 +1,3 @@
-const puppeteer = require('puppeteer');
 const Stock = require('../models/Stock');
 const ScoringService = require('./scoringService');
 const ConfigHelper = require('../utils/configHelper');
@@ -16,6 +15,9 @@ class MubasherTradeService {
         if (this.browser) return;
 
         console.log('Launching browser for Mubasher Trade...');
+        // Dynamic import to handle Puppeteer's ESM module in CommonJS
+        const { default: puppeteer } = await import('puppeteer');
+        
         this.browser = await puppeteer.launch({
             headless: "new",
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
@@ -100,7 +102,7 @@ class MubasherTradeService {
                 const hours = cairoTime.getHours();
                 const minutes = cairoTime.getMinutes();
 
-                if (hours > 14 || (hours === 14 && minutes >= 45)) {
+                if (hours > 14 || (hours === 14 && minutes >= 30)) {
                     console.log('Market hours ended. Closing monitoring session.');
                     break;
                 }
