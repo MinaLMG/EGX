@@ -22,7 +22,7 @@ cron.schedule('0 0 * * *', async () => {
 });
 
 // Schedule Mubasher Trade daily monitoring session (9:50 AM Cairo, Sun-Thu)
-cron.schedule('10 12 * * 0-4', async () => {
+cron.schedule('50 9 * * 0-4', async () => {
     console.log('Starting daily Mubasher Trade monitoring at 09:50 Cairo time');
     await mubasherTradeService.startMonitoring();
 }, {
