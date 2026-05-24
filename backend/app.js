@@ -16,50 +16,13 @@ const mubasherPriceService = require('./services/mubasherPriceService');
 
 const app = express();
 
-// --- Local Cron Schedules (Disabled for Vercel Serverless) ---
-// Note: These will not work on Vercel. Use vercel.json + the /api/cron routes instead.
-/*
-cron.schedule('0 0 * * *', async () => {
-    console.log('Running daily scheduled scrape...');
-    await scraperService.scrapeAllArabicStocks();
-});
-
-cron.schedule('49 13 * * 0-4', async () => {
-    console.log('Starting daily Mubasher Trade monitoring at 09:50 Cairo time');
-    await mubasherTradeService.startMonitoring();
-}, {
-    scheduled: true,
-    timezone: "Africa/Cairo"
-});
-*/
-
-// --- Vercel Cron Endpoints ---
-app.get('/api/cron/update-prices', async (req, res) => {
-    const cairoTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
-    console.log('[Cron] Triggering price update at', cairoTime.toLocaleTimeString());
-    try {
-        // Use the fast API-based service for minute-by-minute updates
-        await mubasherPriceService.updatePricesFromMubasher();
-        res.status(200).json({ success: true, message: 'Prices updated via API' });
-    } catch (error) {
-        console.error('[Cron Error]:', error.message);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-app.get('/api/cron/daily-scrape', async (req, res) => {
-    console.log('[Cron] Triggered daily fair value scrape');
-    try {
-        await scraperService.scrapeAllArabicStocks();
-        res.status(200).json({ success: true });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Lazy Price Update (Checks if price refresh is needed on every request)
+const lazyPriceUpdate = require('./middleware/lazyPriceUpdate');
+app.use(lazyPriceUpdate);
 
 // Routes
 

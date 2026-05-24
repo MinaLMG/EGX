@@ -13,6 +13,22 @@ exports.getSetting = async (key, defaultValue) => {
 };
 
 /**
+ * Sets or updates a system setting
+ */
+exports.setSetting = async (key, value) => {
+    try {
+        await SystemConfig.findOneAndUpdate(
+            { key },
+            { value, key },
+            { upsert: true, new: true }
+        );
+        return true;
+    } catch (err) {
+        return false;
+    }
+};
+
+/**
  * Common settings keys
  */
 exports.KEYS = {
@@ -23,5 +39,6 @@ exports.KEYS = {
     GRAHAM_CONSTANT: 'graham_constant',
     MARKET_START_HOUR: 'market_start_hour',
     MARKET_END_HOUR: 'market_end_hour',
-    MARKET_END_MINUTE: 'market_end_minute'
+    MARKET_END_MINUTE: 'market_end_minute',
+    LAST_PRICE_UPDATE: 'last_price_update'
 };
