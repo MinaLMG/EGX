@@ -20,6 +20,16 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> fetchStocksInfo() async {
+    final headers = await _auth.authHeaders();
+    final response = await http.get(Uri.parse('$baseUrl/stocks/info'), headers: headers);
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      return {'lastPriceUpdate': null};
+    }
+  }
+
   Future<Map<String, dynamic>> fetchStocksMatrix() async {
     final headers = await _auth.authHeaders();
     final response = await http.get(

@@ -32,15 +32,23 @@ module.exports = async (req, res, next) => {
         const lastUpdate = new Date(lastUpdateStr);
         const diffInMs = now - lastUpdate;
 
-        if (diffInMs > 60000) { // 1 minute
-            console.log(`[LazyUpdate] Triggering background update (Last update was ${Math.round(diffInMs/1000)}s ago)`);
+        if (diffInMs > 60000) {
+            console.log(`[LazyUpdate] Scheduling background update (Last update was ${Math.round(diffInMs/1000)}s ago)`);
             
-            // Update the timestamp immediately to prevent other concurrent requests from triggering
-            await ConfigHelper.setSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, now.toISOString());
-
-            // Trigger update in background (don't await)
-            mubasherPriceService.updatePricesFromMubasher().catch(err => {
-                console.error('[LazyUpdate] Background update failed:', err.message);
+            // USE setImmediate to push this task to the end of the event loop, 
+            // ensuring the current request finishes immediately and is NOT blocked.
+            setImmediate(async () => {
+                try {
+                    // 1. Update the timestamp first to prevent other concurrent requests from triggering
+                    await ConfigHelper.setSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, now.toISOString());
+                    
+                    // 2. Perform the update
+                    console.log('[LazyUpdate] Starting background price scraper...');
+                    await mubasherPriceService.updatePricesFromMubasher();
+                    console.log('[LazyUpdate] Background price update finished.');
+                } catch (err) {
+                    console.error('[LazyUpdate] Background task failed:', err.message);
+                }
             });
         }
     } catch (error) {

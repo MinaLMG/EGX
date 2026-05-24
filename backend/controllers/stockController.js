@@ -8,6 +8,7 @@ const XLSX = require('xlsx');
 const ExcelJS = require('exceljs');
 const fairValueService = require('../services/fairValueService');
 const arabicStockService = require('../services/arabicStockService');
+const ConfigHelper = require('../utils/configHelper');
 
 // @desc    Get all stocks
 // @route   GET /api/stocks
@@ -15,6 +16,17 @@ exports.getStocks = async (req, res) => {
     try {
         const stocks = await Stock.find().sort({ total_score: -1, ticker: 1 });
         res.json(stocks);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+// @desc    Get system info (last update timestamp)
+// @route   GET /api/stocks/info
+exports.getStocksInfo = async (req, res) => {
+    try {
+        const lastUpdate = await ConfigHelper.getSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, null);
+        res.json({ lastPriceUpdate: lastUpdate });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

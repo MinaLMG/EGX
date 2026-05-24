@@ -22,21 +22,42 @@ class _StockListScreenState extends State<StockListScreen> {
   Set<String> walletTickers = {};
   bool _isAdmin = false;
   bool _isSearching = false;
+  String? _lastPriceUpdate;
   final _searchController = TextEditingController();
   String _searchQuery = "";
 
   @override
   void initState() {
     super.initState();
-    futureStocks = apiService.fetchStocks();
-    _loadWallet();
+    _loadData();
     _checkAdmin();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      futureStocks = apiService.fetchStocks();
+    });
+    _loadWallet();
+    _loadUpdateInfo();
+  }
+
+  Future<void> _loadUpdateInfo() async {
+    try {
+      final info = await apiService.fetchStocksInfo();
+      if (mounted) {
+        setState(() {
+          _lastPriceUpdate = info['lastPriceUpdate'];
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching update info: $e");
+    }
   }
 
   Future<void> _checkAdmin() async {
     final user = await authService.getUser();
     if (user?.role == 'admin') {
-      setState(() => _isAdmin = true);
+      if (mounted) setState(() => _isAdmin = true);
     }
   }
 
@@ -44,21 +65,32 @@ class _StockListScreenState extends State<StockListScreen> {
     try {
       final wallet = await walletService.getWallet();
       final List items = wallet['wallet']?['items'] ?? [];
-      setState(() {
-        walletTickers = items
-            .map((i) => i['stock']['ticker'] as String)
-            .toSet();
-      });
+      if (mounted) {
+        setState(() {
+          walletTickers = items
+              .map((i) => i['stock']['ticker'] as String)
+              .toSet();
+        });
+      }
     } catch (e) {
       // User might not be logged in or other error, ignore
     }
   }
 
   void _refresh() {
-    setState(() {
-      futureStocks = apiService.fetchStocks();
-      _loadWallet();
-    });
+    _loadData();
+  }
+
+  String _formatTime(String? iso) {
+    if (iso == null) return "Never";
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final now = DateTime.now();
+      if (now.difference(dt).inMinutes < 1) return "Just now";
+      return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return "Unknown";
+    }
   }
 
   Future<void> _exportToExcel() async {
@@ -131,7 +163,9 @@ class _StockListScreenState extends State<StockListScreen> {
               tooltip: 'Mubasher Matching',
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => MubasherMatchingScreen()),
+                MaterialPageRoute(
+                  builder: (context) => MubasherMatchingScreen(),
+                ),
               ),
             ),
           if (_isAdmin)
@@ -169,233 +203,213 @@ class _StockListScreenState extends State<StockListScreen> {
             stops: [0.0, 0.3],
           ),
         ),
-        child: FutureBuilder<List<Stock>>(
-          future: futureStocks,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Center(child: Text('No stocks found'));
-            }
-
-            final List<Stock> sortedStocks = snapshot.data!.where((s) {
-              final q = _searchQuery.toUpperCase();
-              return s.ticker.toUpperCase().contains(q) ||
-                  (s.name?.toUpperCase().contains(q) ?? false);
-            }).toList();
-
-            return ListView.builder(
-              padding: EdgeInsets.all(16),
-              itemCount: sortedStocks.length,
-              itemBuilder: (context, index) {
-                final stock = sortedStocks[index];
-                final bool isMatched =
-                    stock.arabicStockGetter != null &&
-                    stock.arabicStockGetter!.isNotEmpty;
-                final bool isInWallet = walletTickers.contains(stock.ticker);
-
-                return Card(
-                  color: isInWallet ? Colors.amber.shade50 : Colors.white,
-                  margin: EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    side: isInWallet
-                        ? BorderSide(color: Colors.amber, width: 2)
-                        : BorderSide.none,
-                  ),
-                  elevation: isInWallet ? 8 : 4,
-                  child: ExpansionTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isMatched
-                          ? Colors.green.shade100
-                          : Colors.orange.shade100,
-                      child: Text(
-                        stock.ticker[0],
-                        style: TextStyle(
-                          color: isMatched ? Colors.green : Colors.orange,
-                          fontWeight: FontWeight.bold,
-                        ),
+        child: Column(
+          children: [
+            if (_lastPriceUpdate != null)
+              Container(
+                margin: EdgeInsets.symmetric(vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.access_time, size: 14, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text(
+                      'Prices last updated: ${_formatTime(_lastPriceUpdate)}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    title: Row(
-                      children: [
-                        Text(
-                          stock.ticker,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: FutureBuilder<List<Stock>>(
+                future: futureStocks,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('No stocks found'));
+                  }
+
+                  final List<Stock> sortedStocks = snapshot.data!.where((s) {
+                    final q = _searchQuery.toUpperCase();
+                    return s.ticker.toUpperCase().contains(q) ||
+                        (s.name?.toUpperCase().contains(q) ?? false);
+                  }).toList();
+
+                  return ListView.builder(
+                    padding: EdgeInsets.all(16),
+                    itemCount: sortedStocks.length,
+                    itemBuilder: (context, index) {
+                      final stock = sortedStocks[index];
+                      final bool isMatched = stock.arabicStockGetter != null &&
+                          stock.arabicStockGetter!.isNotEmpty;
+                      final bool isInWallet =
+                          walletTickers.contains(stock.ticker);
+
+                      return Card(
+                        color: isInWallet ? Colors.amber.shade50 : Colors.white,
+                        margin: EdgeInsets.only(bottom: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          side: isInWallet
+                              ? BorderSide(color: Colors.amber, width: 2)
+                              : BorderSide.none,
                         ),
-                        if (isInWallet) ...[
-                          SizedBox(width: 8),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                        elevation: isInWallet ? 8 : 4,
+                        child: ExpansionTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isMatched
+                                ? Colors.green.shade100
+                                : Colors.orange.shade100,
                             child: Text(
-                              'WALLET',
+                              stock.ticker[0],
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 8,
+                                color: isMatched ? Colors.green : Colors.orange,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                        ],
-                      ],
-                    ),
-                    subtitle: Text(stock.name ?? 'No Name'),
-                    trailing: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          stock.totalScore.toStringAsFixed(2),
-                          style: TextStyle(
-                            color: Colors.deepPurple,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        Icon(
-                          isMatched
-                              ? Icons.check_circle
-                              : Icons.warning_amber_rounded,
-                          color: isMatched ? Colors.green : Colors.orange,
-                          size: 16,
-                        ),
-                      ],
-                    ),
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Current Price:',
-                                  style: TextStyle(color: Colors.grey),
+                          title: Row(
+                            children: [
+                              Text(
+                                stock.ticker,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
                                 ),
-                                Text(
-                                  '${stock.price} EGP',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              if (isInWallet) ...[
+                                SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'WALLET',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ],
-                            ),
-                            if (stock.arabicStockFairValue != null) ...[
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Fair Value:',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                  Text(
-                                    '${stock.arabicStockFairValue} EGP',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
-                            if (stock.arabicStockAnalyzersFairValue !=
-                                null) ...[
-                              SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Analyzers Fair Value:',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                  Text(
-                                    '${stock.arabicStockAnalyzersFairValue} EGP',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.teal,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                            Divider(height: 32),
-                            Text(
-                              'Recommendation Scores',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.deepPurple,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            _buildScoreRow(
-                              'BF Potential (i1)',
-                              stock.bfPotential,
-                            ),
-                            _buildScoreRow(
-                              'Fundamental (i2)',
-                              stock.fundamentalPotential,
-                            ),
-                            _buildScoreRow(
-                              'Technical (i3)',
-                              stock.technicalPotential,
-                            ),
-                            _buildScoreRow(
-                              'ArabStock (i4)',
-                              stock.arabstockScore,
-                            ),
-                            _buildScoreRow('RFP Score', stock.rfpScore),
-                            _buildScoreRow('RSP Score', stock.rspScore),
-                            SizedBox(height: 16),
-                            if (_isAdmin)
-                              Center(
-                                child: ElevatedButton.icon(
-                                  icon: Icon(Icons.link),
-                                  label: Text(
-                                    isMatched
-                                        ? 'Change Match'
-                                        : 'Match ArabicStock',
-                                  ),
-                                  onPressed: () async {
-                                    await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            MatchScreen(stock: stock),
-                                      ),
-                                    );
-                                    _refresh();
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.deepPurple,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
+                          ),
+                          subtitle: Text(stock.name ?? 'No Name'),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                stock.totalScore.toStringAsFixed(2),
+                                style: TextStyle(
+                                  color: Colors.deepPurple,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
                                 ),
                               ),
+                              Icon(
+                                isMatched
+                                    ? Icons.check_circle
+                                    : Icons.warning_amber_rounded,
+                                color: isMatched ? Colors.green : Colors.orange,
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildDataRow('Current Price:',
+                                      '${stock.price} EGP', Colors.black),
+                                  if (stock.arabicStockFairValue != null)
+                                    _buildDataRow('Fair Value:',
+                                        '${stock.arabicStockFairValue} EGP', Colors.blue),
+                                  if (stock.arabicStockAnalyzersFairValue !=
+                                      null)
+                                    _buildDataRow(
+                                        'Analyzers Fair Value:',
+                                        '${stock.arabicStockAnalyzersFairValue} EGP',
+                                        Colors.teal),
+                                  Divider(height: 32),
+                                  Text(
+                                    'Recommendation Scores',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.deepPurple,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  _buildScoreRow(
+                                      'BF Potential (i1)', stock.bfPotential),
+                                  _buildScoreRow('Fundamental (i2)',
+                                      stock.fundamentalPotential),
+                                  _buildScoreRow('Technical (i3)',
+                                      stock.technicalPotential),
+                                  _buildScoreRow(
+                                      'ArabStock (i4)', stock.arabstockScore),
+                                  _buildScoreRow('RFP Score', stock.rfpScore),
+                                  _buildScoreRow('RSP Score', stock.rspScore),
+                                  SizedBox(height: 16),
+                                  if (_isAdmin)
+                                    Center(
+                                      child: ElevatedButton.icon(
+                                        icon: Icon(Icons.link),
+                                        label: Text(
+                                          isMatched
+                                              ? 'Change Match'
+                                              : 'Match ArabicStock',
+                                        ),
+                                        onPressed: () async {
+                                          await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  MatchScreen(stock: stock),
+                                            ),
+                                          );
+                                          _refresh();
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.deepPurple,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -437,7 +451,8 @@ class _StockListScreenState extends State<StockListScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
           ElevatedButton(
             onPressed: () async {
               try {
@@ -459,6 +474,22 @@ class _StockListScreenState extends State<StockListScreen> {
               }
             },
             child: Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataRow(String label, String value, Color valueColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey)),
+          Text(
+            value,
+            style: TextStyle(fontWeight: FontWeight.bold, color: valueColor),
           ),
         ],
       ),
