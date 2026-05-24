@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "crons": [
     {
       "path": "/api/cron/update-prices",
@@ -9,17 +10,24 @@
       "schedule": "0 21 * * *"
     }
   ],
-  "version": 2,
   "builds": [
     {
-      "src": "app.js",
+      "src": "backend/app.js",
       "use": "@vercel/node"
     }
   ],
   "rewrites": [
     {
+      "source": "/api/cron/(.*)",
+      "destination": "backend/app.js"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "backend/app.js"
+    },
+    {
       "source": "/(.*)",
-      "destination": "app.js"
+      "destination": "backend/app.js"
     }
   ]
 }
