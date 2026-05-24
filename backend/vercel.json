@@ -1,14 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/update-prices",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/daily-scrape",
-      "schedule": "0 21 * * *"
-    }
-  ],
   "version": 2,
   "builds": [
     {
