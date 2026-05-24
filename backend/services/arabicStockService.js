@@ -1,5 +1,6 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const ConfigHelper = require('../utils/configHelper');
 
 /**
  * Searches arabicstock.com for matching stocks
@@ -8,10 +9,11 @@ const cheerio = require('cheerio');
  */
 exports.search = async (query) => {
     try {
+        const userAgent = await ConfigHelper.getSetting(ConfigHelper.KEYS.USER_AGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
         const searchUrl = `https://arabicstock.com/search?q=${encodeURIComponent(query)}`;
         const { data: html } = await axios.get(searchUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                'User-Agent': userAgent
             }
         });
 

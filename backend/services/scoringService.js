@@ -14,12 +14,18 @@ const DEFAULT_WEIGHTS = {
     arabstock: 0.5
 };
 
+const ConfigHelper = require('../utils/configHelper');
+
 class ScoringService {
     async calculateAllScores(customWeights = {}) {
-        const weights = { ...DEFAULT_WEIGHTS, ...customWeights };
-        console.log('Starting score recalculation with weights:', weights);
-
+        let weights = { ...DEFAULT_WEIGHTS, ...customWeights };
+        
         try {
+            const dbWeights = await ConfigHelper.getSetting(ConfigHelper.KEYS.SCORING_WEIGHTS, {});
+            weights = { ...weights, ...dbWeights };
+            
+            console.log('Starting score recalculation with weights:', weights);
+
             const stocks = await Stock.find();
             const bfValues = await BFValue.find();
             const fundamentalRecs = await FundamentalRecommendation.find();

@@ -54,6 +54,8 @@ class WalletService {
     double? manualTotalOverride,
     String? profitMode,
     double? manualProfitValue,
+    double? liquidityFactor,
+    double? rebalancingThreshold,
     String? targetUserId,
   }) async {
     final headers = await _auth.authHeaders();
@@ -64,6 +66,8 @@ class WalletService {
     if (manualTotalOverride != null) body['manualTotalOverride'] = manualTotalOverride;
     if (profitMode != null) body['profitMode'] = profitMode;
     if (manualProfitValue != null) body['manualProfitValue'] = manualProfitValue;
+    if (liquidityFactor != null) body['liquidityFactor'] = liquidityFactor;
+    if (rebalancingThreshold != null) body['rebalancingThreshold'] = rebalancingThreshold;
     if (targetUserId != null) body['userId'] = targetUserId;
 
     final response = await http.patch(

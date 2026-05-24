@@ -3,6 +3,7 @@ const Stock = require('../models/Stock');
 const MubasherMatch = require('../models/MubasherMatch');
 const MubasherUnmatched = require('../models/MubasherUnmatched');
 const ScoringService = require('./scoringService');
+const ConfigHelper = require('../utils/configHelper');
 
 /**
  * Fetch stock prices from Mubasher API and update Database
@@ -11,11 +12,14 @@ exports.updatePricesFromMubasher = async () => {
     try {
         console.log('Fetching prices from Mubasher API...');
 
+        const timeout = await ConfigHelper.getSetting(ConfigHelper.KEYS.HTTP_TIMEOUT, 30000);
+        const userAgent = await ConfigHelper.getSetting(ConfigHelper.KEYS.USER_AGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+
         // Use the public API endpoint discovered during browser investigation
         const response = await axios.get('https://www.mubasher.info/api/1/stocks/prices/all?country=eg', {
-            timeout: 30000,
+            timeout,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'User-Agent': userAgent,
                 'Accept': 'application/json',
                 'Referer': 'https://www.mubasher.info/countries/eg/all-stock-prices',
                 'Origin': 'https://www.mubasher.info'

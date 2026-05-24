@@ -26,6 +26,8 @@ class _WalletScreenState extends State<WalletScreen> {
   final _factorController = TextEditingController();
   final _totalOverrideController = TextEditingController();
   final _qtyController = TextEditingController();
+  final _liquidityController = TextEditingController();
+  final _thresholdController = TextEditingController();
 
   // Profit controllers
   final _valController = TextEditingController();
@@ -68,6 +70,9 @@ class _WalletScreenState extends State<WalletScreen> {
           _profitMode = wallet['wallet']['profitMode'] ?? 'automatic';
           _manualProfitValueController.text =
               (wallet['wallet']['manualProfitValue'] ?? "").toString();
+          
+          _liquidityController.text = (wallet['wallet']['liquidityFactor'] ?? 0.0).toString();
+          _thresholdController.text = (wallet['wallet']['rebalancingThreshold'] ?? 0.10).toString();
         }
       });
     } catch (e) {
@@ -134,6 +139,8 @@ class _WalletScreenState extends State<WalletScreen> {
         manualTotalOverride: double.tryParse(_totalOverrideController.text),
         profitMode: _profitMode,
         manualProfitValue: double.tryParse(_manualProfitValueController.text),
+        liquidityFactor: double.tryParse(_liquidityController.text),
+        rebalancingThreshold: double.tryParse(_thresholdController.text),
         targetUserId: widget.targetUserId,
       );
       await _loadData();
@@ -1207,13 +1214,15 @@ class _WalletScreenState extends State<WalletScreen> {
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 12),
-              TextField(
-                controller: _factorController,
-                decoration: InputDecoration(
-                  labelText: 'Factor (default 0.6)',
-                  border: OutlineInputBorder(),
+              OutlinedButton.icon(
+                onPressed: _showSensitiveSettingsDialog,
+                icon: Icon(Icons.tune, size: 18),
+                label: Text('Advanced Sensitive Settings'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.orange.shade900,
+                  side: BorderSide(color: Colors.orange.shade200),
+                  minimumSize: Size(double.infinity, 40),
                 ),
-                keyboardType: TextInputType.number,
               ),
               SizedBox(height: 12),
               ElevatedButton.icon(
@@ -1671,6 +1680,96 @@ class _WalletScreenState extends State<WalletScreen> {
               }
             },
             child: Text('Save All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSensitiveSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.lock_outline, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Sensitive Settings', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'These parameters affect the core rebalancing algorithm. Only change them if you understand the mathematical implications.',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _factorController,
+                decoration: InputDecoration(
+                  labelText: 'Matching Factor (Score Weight)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: _liquidityController,
+                decoration: InputDecoration(
+                  labelText: 'Liquidity Factor (Cash %)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              SizedBox(height: 12),
+              TextField(
+                controller: _thresholdController,
+                decoration: InputDecoration(
+                  labelText: 'Rebalancing Factor (Threshold)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade800,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              bool confirm = await showDialog(
+                    context: context,
+                    builder: (innerCtx) => AlertDialog(
+                      title: Text('Are you sure?'),
+                      content: Text(
+                          'Those data are sensitive and needs experience to be determined are you sure about changing?'),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(innerCtx, false),
+                            child: Text('No')),
+                        TextButton(
+                            onPressed: () => Navigator.pop(innerCtx, true),
+                            child: Text('Yes',
+                                style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold))),
+                      ],
+                    ),
+                  ) ??
+                  false;
+
+              if (confirm) {
+                Navigator.pop(ctx);
+                _saveSettings();
+              }
+            },
+            child: Text('Save Changes'),
           ),
         ],
       ),

@@ -27,13 +27,16 @@ const _calcWalletInternal = async (userId) => {
     });
 
     const factor = wallet.factor;
+    const liquidityFactor = wallet.liquidityFactor || 0;
+    const investableValue = totalVal * (1 - liquidityFactor);
+
     let diffValue = 0;
     const analysis = [];
 
     if (itemsCount > 0) {
         const alpha = (itemsCount - 1) / 2;
         if (itemsCount > 1) {
-            diffValue = totalVal * (1 - factor) / itemsCount / (alpha + factor * alpha);
+            diffValue = investableValue * (1 - factor) / itemsCount / (alpha + factor * alpha);
         }
 
         let previousSupposed = null;
@@ -47,7 +50,7 @@ const _calcWalletInternal = async (userId) => {
 
             let supposedValue;
             if (i === 0) {
-                supposedValue = (totalVal / itemsCount) + ((itemsCount - 1) / 2 * diffValue);
+                supposedValue = (investableValue / itemsCount) + ((itemsCount - 1) / 2 * diffValue);
             } else {
                 supposedValue = previousSupposed - diffValue;
             }
@@ -55,9 +58,10 @@ const _calcWalletInternal = async (userId) => {
 
             const gap = supposedValue - realMarketValue;
             let suggestion = 'Hold';
+            const threshold = wallet.rebalancingThreshold || 0.10;
             if (realMarketValue > 0) {
                 const deviation = Math.abs(gap) / realMarketValue;
-                if (deviation >= 0.10) suggestion = gap > 0 ? 'Buy' : 'Sell';
+                if (deviation >= threshold) suggestion = gap > 0 ? 'Buy' : 'Sell';
             } else if (gap > 0) {
                 suggestion = 'Buy';
             }
@@ -277,7 +281,7 @@ exports.updateWalletItem = async (req, res) => {
 // @route   PATCH /api/wallet
 exports.updateWalletSettings = async (req, res) => {
     try {
-        const { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue, activePointOnTimeId, userId } = req.body;
+        const { cash, factor, mode, manualTotalOverride, profitMode, manualProfitValue, activePointOnTimeId, liquidityFactor, rebalancingThreshold, userId } = req.body;
         const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
 
         const update = {};
@@ -287,6 +291,8 @@ exports.updateWalletSettings = async (req, res) => {
         if (manualTotalOverride !== undefined) update.manualTotalOverride = manualTotalOverride;
         if (profitMode !== undefined) update.profitMode = profitMode;
         if (manualProfitValue !== undefined) update.manualProfitValue = manualProfitValue;
+        if (liquidityFactor !== undefined) update.liquidityFactor = liquidityFactor;
+        if (rebalancingThreshold !== undefined) update.rebalancingThreshold = rebalancingThreshold;
         
         // Handle snapshot activation/deactivation
         if (activePointOnTimeId !== undefined) {

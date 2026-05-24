@@ -1,7 +1,9 @@
+const ConfigHelper = require('../utils/configHelper');
+
 /**
  * Fair Value Calculation Service
  */
-exports.calculate = (stockData) => {
+exports.calculate = async (stockData) => {
     const { financialData } = stockData;
 
     if (!financialData) return null;
@@ -11,7 +13,8 @@ exports.calculate = (stockData) => {
     const { eps, bookValue } = financialData;
 
     if (eps > 0 && bookValue > 0) {
-        return Math.sqrt(22.5 * eps * bookValue);
+        const grahamConstant = await ConfigHelper.getSetting(ConfigHelper.KEYS.GRAHAM_CONSTANT, 22.5);
+        return Math.sqrt(grahamConstant * eps * bookValue);
     }
 
     return null;

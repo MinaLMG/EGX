@@ -51,6 +51,7 @@ app.use('/api/stocks', require('./routes/stockRoutes'));
 app.use('/api/recommendations', protect, authorize('admin'), require('./routes/recommendationRoutes'));
 app.use('/api/mubasher', protect, authorize('admin'), require('./routes/mubasherRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 // Health Check
 app.get('/', (req, res) => {

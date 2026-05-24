@@ -63,6 +63,14 @@ const WalletSchema = new mongoose.Schema({
     activePointOnTimeId: {
         type: mongoose.Schema.Types.ObjectId,
         default: null // null = use all transactions (default); set to a pointsOnTime _id to anchor profit from that snapshot
+    },
+    liquidityFactor: {
+        type: Number,
+        default: 0 // percentage (e.g. 0.1 for 10% kept as cash during rebalancing)
+    },
+    rebalancingThreshold: {
+        type: Number,
+        default: 0.10 // percentage (e.g. 0.1 for 10% deviation trigger)
     }
 }, { timestamps: true });
 
