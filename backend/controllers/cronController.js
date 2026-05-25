@@ -2,58 +2,77 @@ const ConfigHelper = require('../utils/configHelper');
 const mubasherTradeService = require('../services/mubasherTradeService');
 const scraperService = require('../services/scraperService');
 
-/**
- * Centered logic for Vercel Cron / External Cron triggers
- */
-exports.syncAll = async (req, res) => {
-    // 1. Security Check
+// Shared security check helper
+const checkAuth = (req) => {
     const authHeader = req.headers['authorization'];
     const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) return false;
+    return true;
+};
 
-    // If a secret is set in environment, enforce it
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        return res.status(401).json({ message: 'Unauthorized: Invalid Cron Secret' });
-    }
+/**
+ * TASK 1: Prices Only (Fastest, High Priority)
+ */
+exports.syncPrices = async (req, res) => {
+    if (!checkAuth(req)) return res.status(401).json({ message: 'Unauthorized' });
 
-    console.log('[Cron] Execution started...');
-    const results = { prices: 0, fairValues: 0 };
+    console.log('[Cron] Price-only sync started...');
     const startTime = Date.now();
 
     try {
-        // --- TASK 1: Prices (High Priority) ---
-        // We attempt the price update first.
-        // NOTE: On Vercel Hobby (10s limit), Puppeteer login + scrape is very tight.
-        try {
-            console.log('[Cron] Attempting price sync...');
-            results.prices = await mubasherTradeService.updatePrices();
-        } catch (err) {
-            console.error('[Cron] Price sync failed:', err.message);
-        }
-
-        // --- TASK 2: Fair Values (Drip) ---
-        // Only if we have time left (e.g., spent < 7s so far)
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 7000) {
-            try {
-                console.log('[Cron] Attempting fair-value drip...');
-                results.fairValues = await scraperService.scrapeAllArabicStocks({
-                    staleOnly: true,
-                    limit: 3, // Small batch to stay within time limits
-                    noDelay: true
-                });
-            } catch (err) {
-                console.error('[Cron] Fair-value drip failed:', err.message);
-            }
-        }
-
+        const results = await mubasherTradeService.updatePrices();
         res.json({
             status: 'success',
-            results,
+            type: 'prices',
+            count: results,
             elapsed_ms: Date.now() - startTime
         });
-
     } catch (error) {
-        console.error('[Cron] Global Error:', error.message);
+        console.error('[Cron] Price sync error:', error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
+};
+
+/**
+ * TASK 2: Fair Value Drip Only (Slower, Low Priority)
+ */
+exports.syncFairValues = async (req, res) => {
+    if (!checkAuth(req)) return res.status(401).json({ message: 'Unauthorized' });
+
+    console.log('[Cron] Fair-value drip started...');
+    const startTime = Date.now();
+
+    try {
+        const results = await scraperService.scrapeAllArabicStocks({
+            staleOnly: true,
+            limit: 5, // We can be a bit more generous now that it's isolated
+            noDelay: true
+        });
+        res.json({
+            status: 'success',
+            type: 'fair-values',
+            count: results,
+            elapsed_ms: Date.now() - startTime
+        });
+    } catch (error) {
+        console.error('[Cron] Fair-value drip error:', error.message);
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+/**
+ * Legacy: Keep syncAll for general maintenance
+ */
+exports.syncAll = async (req, res) => {
+    if (!checkAuth(req)) return res.status(401).json({ message: 'Unauthorized' });
+    
+    // We can just call the others internally or keep the existing combined logic
+    // For now, let's keep it simple and just run both in sequence for a "Deep Sync"
+    console.log('[Cron] Deep Sync All started...');
+    const start = Date.now();
+    let p = 0, f = 0;
+    try { p = await mubasherTradeService.updatePrices(); } catch (e) {}
+    try { f = await scraperService.scrapeAllArabicStocks({ staleOnly: true, limit: 3 }); } catch (e) {}
+    
+    res.json({ status: 'success', prices: p, fairValues: f, elapsed: Date.now() - start });
 };

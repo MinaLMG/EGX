@@ -171,6 +171,7 @@ class MubasherTradeService {
 
         const result = await Stock.bulkWrite(bulkOps);
         const updated = (result.modifiedCount || 0) + (result.upsertedCount || 0);
+        console.log(`Mubasher: Successfully saved ${updated} prices to the database.`);
 
         if (updated > 0) {
             clearTimeout(this._scoreDebounce);
