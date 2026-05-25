@@ -25,7 +25,7 @@ const mubasherTradeService = require('../services/mubasherTradeService');
 const TIMEZONE_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3
 
 // Market close: 14:30 local (UTC+3)  →  11:30 UTC
-const CLOSE_HOUR_UTC   = 11;
+const CLOSE_HOUR_UTC = 11;
 const CLOSE_MINUTE_UTC = 30;
 
 // Delay between scrape cycles (ms). Mubasher itself takes ~3-5 min per run.
@@ -78,6 +78,7 @@ async function main() {
 
     while (true) {
         if (isAfterMarketClose()) {
+            continue;
             console.log(`[Scraper] Market closed (${formatLocal(nowUTC())}). Exiting cleanly.`);
             break;
         }
@@ -95,6 +96,7 @@ async function main() {
 
         // Check again before sleeping so we don't wait needlessly past close
         if (isAfterMarketClose()) {
+            continue
             console.log(`[Scraper] Market closed after cycle. Exiting cleanly.`);
             break;
         }
@@ -106,7 +108,7 @@ async function main() {
     try {
         await mongoose.disconnect();
         console.log('[Scraper] MongoDB disconnected. Goodbye.');
-    } catch (_) {}
+    } catch (_) { }
 
     process.exit(0);
 }
