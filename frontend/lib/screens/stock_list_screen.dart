@@ -22,7 +22,6 @@ class _StockListScreenState extends State<StockListScreen> {
   Set<String> walletTickers = {};
   bool _isAdmin = false;
   bool _isSearching = false;
-  String? _lastPriceUpdate;
   final _searchController = TextEditingController();
   String _searchQuery = "";
 
@@ -38,20 +37,6 @@ class _StockListScreenState extends State<StockListScreen> {
       futureStocks = apiService.fetchStocks();
     });
     _loadWallet();
-    _loadUpdateInfo();
-  }
-
-  Future<void> _loadUpdateInfo() async {
-    try {
-      final info = await apiService.fetchStocksInfo();
-      if (mounted) {
-        setState(() {
-          _lastPriceUpdate = info['lastPriceUpdate'];
-        });
-      }
-    } catch (e) {
-      debugPrint("Error fetching update info: $e");
-    }
   }
 
   Future<void> _checkAdmin() async {
@@ -79,18 +64,6 @@ class _StockListScreenState extends State<StockListScreen> {
 
   void _refresh() {
     _loadData();
-  }
-
-  String _formatTime(String? iso) {
-    if (iso == null) return "Never";
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      final now = DateTime.now();
-      if (now.difference(dt).inMinutes < 1) return "Just now";
-      return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
-    } catch (e) {
-      return "Unknown";
-    }
   }
 
   Future<void> _exportToExcel() async {
@@ -205,30 +178,6 @@ class _StockListScreenState extends State<StockListScreen> {
         ),
         child: Column(
           children: [
-            if (_lastPriceUpdate != null)
-              Container(
-                margin: EdgeInsets.symmetric(vertical: 8),
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.white),
-                    SizedBox(width: 6),
-                    Text(
-                      'Prices last updated: ${_formatTime(_lastPriceUpdate)}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             Expanded(
               child: FutureBuilder<List<Stock>>(
                 future: futureStocks,

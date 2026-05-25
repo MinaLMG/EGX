@@ -11,22 +11,15 @@ class ApiService {
 
   Future<List<Stock>> fetchStocks() async {
     final headers = await _auth.authHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/stocks'), headers: headers);
+    final response = await http.get(
+      Uri.parse('$baseUrl/stocks'),
+      headers: headers,
+    );
     if (response.statusCode == 200) {
       List jsonResponse = json.decode(response.body);
       return jsonResponse.map((data) => Stock.fromJson(data)).toList();
     } else {
       throw Exception('Failed to load stocks');
-    }
-  }
-
-  Future<Map<String, dynamic>> fetchStocksInfo() async {
-    final headers = await _auth.authHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/stocks/info'), headers: headers);
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      return {'lastPriceUpdate': null};
     }
   }
 
@@ -93,11 +86,7 @@ class ApiService {
     final response = await http.post(
       Uri.parse('$baseUrl/stocks'),
       headers: headers,
-      body: jsonEncode({
-        'ticker': ticker,
-        'name': name,
-        'price': price,
-      }),
+      body: jsonEncode({'ticker': ticker, 'name': name, 'price': price}),
     );
 
     if (response.statusCode != 201) {

@@ -51,6 +51,5 @@ exports.KEYS = {
     GRAHAM_CONSTANT:  'graham_constant',
     MARKET_START_HOUR:'market_start_hour',
     MARKET_END_HOUR:  'market_end_hour',
-    MARKET_END_MINUTE:'market_end_minute',
-    LAST_PRICE_UPDATE:'last_price_update'
+    MARKET_END_MINUTE:'market_end_minute'
 };

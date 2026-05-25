@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
-const { getStocks, getStocksInfo, createStock, searchArabicStock, matchArabicStock, getStocksMatrix, getStocksExcel } = require('../controllers/stockController');
+const { getStocks, createStock, searchArabicStock, matchArabicStock, getStocksMatrix, getStocksExcel } = require('../controllers/stockController');
 
 router.get('/', protect, getStocks);
-router.get('/info', protect, getStocksInfo);
 router.get('/admin/matrix', protect, authorize('admin'), getStocksMatrix);
 router.get('/admin/export-excel', protect, authorize('admin'), getStocksExcel);
 router.post('/', protect, authorize('admin'), createStock);

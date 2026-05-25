@@ -19,17 +19,6 @@ exports.getStocks = async (req, res) => {
     }
 };
 
-// @desc    Get system info (last update timestamp)
-// @route   GET /api/stocks/info
-exports.getStocksInfo = async (req, res) => {
-    try {
-        const lastUpdate = await ConfigHelper.getSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, null);
-        res.json({ lastPriceUpdate: lastUpdate });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-};
-
 // @desc    Search for stock on ArabicStock.com
 // @route   GET /api/stocks/search-arabic
 exports.searchArabicStock = async (req, res) => {
@@ -187,10 +176,10 @@ exports.getStocksExcel = async (req, res) => {
             const rowIndex = index + 2; // Data starts at row 2
             const bf = bfValues.find(b => b.stock.toString() === stock._id.toString());
             const fundRec = fundamentalRecs.find(r => r.stock.toString() === stock._id.toString());
-            
+
             // Get highest technical target for this ticker
             const tickersTechs = technicalRecs.filter(r => r.stock.toString() === stock._id.toString());
-            const maxTechTarget = tickersTechs.length > 0 
+            const maxTechTarget = tickersTechs.length > 0
                 ? Math.max(...tickersTechs.map(t => t.target))
                 : null;
 
@@ -238,13 +227,13 @@ exports.getStocksExcel = async (req, res) => {
 
             // Trial score components (after users)
             rowData.push(
-                stock.trial_bf_potential    ?? null,  // Trial: BF (i1)       — (2*BF/price)-1
+                stock.trial_bf_potential ?? null,  // Trial: BF (i1)       — (2*BF/price)-1
                 stock.trial_fundamental_raw ?? null,  // Trial: Fund Raw (i2) — raw FV/price-1
-                stock.trial_technical_sum   ?? null,  // Trial: Tech Sum (i3) — summed rec rank scores
-                stock.trial_rfp_score       ?? null,  // Trial: RFP           — Steep logic
-                stock.trial_rsp_score       ?? null,  // Trial: RSP           — Steep logic
+                stock.trial_technical_sum ?? null,  // Trial: Tech Sum (i3) — summed rec rank scores
+                stock.trial_rfp_score ?? null,  // Trial: RFP           — Steep logic
+                stock.trial_rsp_score ?? null,  // Trial: RSP           — Steep logic
                 stock.trial_arabstock_score ?? null,  // Trial: Arab (i4)     — Steep logic
-                stock.trial_total_score     ?? null   // Trial Total Score
+                stock.trial_total_score ?? null   // Trial Total Score
             );
 
             const row = worksheet.getRow(rowIndex);

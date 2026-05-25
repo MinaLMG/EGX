@@ -44,8 +44,6 @@ exports.syncFairValues = async (req, res) => {
 
     try {
         const results = await scraperService.scrapeAllArabicStocks({
-            staleOnly: true,
-            limit: 5, // We can be a bit more generous now that it's isolated
             noDelay: true
         });
         res.json({
@@ -65,14 +63,14 @@ exports.syncFairValues = async (req, res) => {
  */
 exports.syncAll = async (req, res) => {
     if (!checkAuth(req)) return res.status(401).json({ message: 'Unauthorized' });
-    
+
     // We can just call the others internally or keep the existing combined logic
     // For now, let's keep it simple and just run both in sequence for a "Deep Sync"
     console.log('[Cron] Deep Sync All started...');
     const start = Date.now();
     let p = 0, f = 0;
-    try { p = await mubasherTradeService.updatePrices(); } catch (e) {}
-    try { f = await scraperService.scrapeAllArabicStocks({ staleOnly: true, limit: 3 }); } catch (e) {}
-    
+    try { p = await mubasherTradeService.updatePrices(); } catch (e) { }
+    try { f = await scraperService.scrapeAllArabicStocks({ staleOnly: true, limit: 3 }); } catch (e) { }
+
     res.json({ status: 'success', prices: p, fairValues: f, elapsed: Date.now() - start });
 };
