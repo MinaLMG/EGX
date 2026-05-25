@@ -1,33 +1,8 @@
 {
-  "version": 2,
   "crons": [
     {
-      "path": "/api/cron/update-prices",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/daily-scrape",
+      "path": "/api/cron/sync",
       "schedule": "0 21 * * *"
-    }
-  ],
-  "builds": [
-    {
-      "src": "backend/app.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/cron/(.*)",
-      "destination": "backend/app.js"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "backend/app.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "backend/app.js"
     }
   ]
 }

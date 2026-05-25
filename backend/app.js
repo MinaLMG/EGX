@@ -20,22 +20,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ─────────────────────────────────────────────────────────────────
-// Update Strategy:
-//   VERCEL=1  → Lazy middleware (per-request trigger, stateless)
-//   local/VPS → node-cron (scheduled, persistent process)
-// Vercel sets VERCEL=1 automatically in its environment.
-// ─────────────────────────────────────────────────────────────────
-// if (process.env.VERCEL) {
-const lazyPriceUpdate = require('./middleware/lazyPriceUpdate');
-app.use(lazyPriceUpdate);
-console.log('[Mode] Vercel detected — using lazy price update middleware.');
-// } else {
-//     console.log('[Mode] Persistent server detected — cron jobs will be scheduled on startup.');
-// }
-
 // Routes
-
 const { protect, authorize } = require('./middleware/auth');
 
 app.use('/api/auth', require('./routes/authRoutes'));
@@ -44,6 +29,7 @@ app.use('/api/recommendations', protect, authorize('admin'), require('./routes/r
 app.use('/api/mubasher', protect, authorize('admin'), require('./routes/mubasherRoutes'));
 app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/cron', require('./routes/cronRoutes'));
 
 // Health Check
 app.get('/', (req, res) => {
@@ -54,61 +40,65 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
-    if (!process.env.VERCEL) scheduleCronJobs();
+
+    // Cron Strategy:
+    // 1. On Local/VPS: Use node-cron for persistent background scheduling.
+    // 2. On Vercel: This does nothing (serverless). Use Vercel's config or external pingers to hit /api/cron/sync instead.
+    if (!process.env.VERCEL) {
+        scheduleCronJobs();
+    } else {
+        console.log('[Mode] Vercel detected — Background cron disabled (use external triggers).');
+    }
 });
 
 // ─────────────────────────────────────────────────────────────────
-// Cron Jobs — single approach for local & VPS persistent servers.
-// (Vercel serverless can't run persistent cron; use HTTP triggers
-//  there instead if ever needed.)
+// Cron Jobs — for local & VPS persistent servers only.
 // ─────────────────────────────────────────────────────────────────
 function scheduleCronJobs() {
-    // const cron = require('node-cron');
-    // const scraperService = require('./services/scraperService');
-    // const mubasherTradeService = require('./services/mubasherTradeService');
+    const cron = require('node-cron');
+    const scraperService = require('./services/scraperService');
+    const mubasherTradeService = require('./services/mubasherTradeService');
 
-    // // Lock flag — prevents a new scrape starting while the previous one
-    // // is still running (Mubasher scrape can exceed 1 minute).
-    // let isScraping = false;
+    let isScraping = false;
 
-    // // Price update: every minute during EGX market hours (Sun–Thu, 09:50–15:00)
-    // cron.schedule('* * * * *', async () => {
-    //     if (isScraping) {
-    //         console.log('[Cron] Skipping tick — previous scrape still in progress.');
-    //         return;
-    //     }
-    //     const now = new Date();
-    //     const cairoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
-    //     const day = cairoNow.getDay();   // 0=Sun … 6=Sat
-    //     const h = cairoNow.getHours();
-    //     const m = cairoNow.getMinutes();
-    //     const isWorkingDay = day >= 0 && day <= 4;                         // Sun–Thu (EGX)
-    //     const isMarketHour = (h > 9 || (h === 9 && m >= 50)) && h < 15;   // 09:50–15:00
-    //     console.log(isWorkingDay, isMarketHour);
-    //     if (!isWorkingDay || !isMarketHour) return;
+    // Price update: every minute during EGX market hours (Sun–Thu, 09:50–15:00)
+    cron.schedule('* * * * *', async () => {
+        if (isScraping) {
+            console.log('[Cron] Skipping tick — previous scrape still in progress.');
+            return;
+        }
+        const now = new Date();
+        const cairoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
+        const day = cairoNow.getDay();
+        const h = cairoNow.getHours();
+        const m = cairoNow.getMinutes();
+        const isWorkingDay = day >= 0 && day <= 4;
+        const isMarketHour = (h > 9 || (h === 9 && m >= 50)) && h < 15;
 
-    //     isScraping = true;
-    //     try {
-    //         console.log('[Cron] Triggering Mubasher price update...');
-    //         const count = await mubasherTradeService.updatePrices();
-    //         console.log(`[Cron] Price update done: ${count} stocks updated.`);
-    //     } catch (err) {
-    //         console.error('[Cron] Price update failed:', err.message);
-    //     } finally {
-    //         isScraping = false;
-    //     }
-    // }, { timezone: 'Africa/Cairo' });
+        if (!isWorkingDay || !isMarketHour) return;
 
-    // // Daily fair - value scrape: every day at 21:00 Cairo(after market close)
-    // cron.schedule('0 0 * * *', async () => {
-    //     try {
-    //         console.log('[Cron] Running daily ArabicStock fair-value scrape...');
-    //         await scraperService.scrapeAllArabicStocks();
-    //         console.log('[Cron] Daily scrape complete.');
-    //     } catch (err) {
-    //         console.error('[Cron] Daily scrape failed:', err.message);
-    //     }
-    // }, { timezone: 'Africa/Cairo' });
+        isScraping = true;
+        try {
+            console.log('[Cron] Triggering Mubasher price update...');
+            const count = await mubasherTradeService.updatePrices();
+            console.log(`[Cron] Price update done: ${count} stocks updated.`);
+        } catch (err) {
+            console.error('[Cron] Price update failed:', err.message);
+        } finally {
+            isScraping = false;
+        }
+    }, { timezone: 'Africa/Cairo' });
 
-    // console.log('[Cron] Jobs scheduled: Mubasher price update (every min, market hours) + ArabicStock scrape (21:00 Cairo).');
+    // Daily fair-value scrape: 00:00 Cairo
+    cron.schedule('0 0 * * *', async () => {
+        try {
+            console.log('[Cron] Running daily ArabicStock fair-value scrape...');
+            await scraperService.scrapeAllArabicStocks();
+            console.log('[Cron] Daily scrape complete.');
+        } catch (err) {
+            console.error('[Cron] Daily scrape failed:', err.message);
+        }
+    }, { timezone: 'Africa/Cairo' });
+
+    console.log('[Cron] Jobs scheduled: Mubasher Price (market hours) + Daily Fair-Value Scrape (00:00).');
 }
