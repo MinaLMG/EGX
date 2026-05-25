@@ -29,7 +29,7 @@ const CLOSE_HOUR_UTC = 11;
 const CLOSE_MINUTE_UTC = 30;
 
 // Delay between scrape cycles (ms). Mubasher itself takes ~3-5 min per run.
-const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes between attempts
+const INTERVAL_MS = 60 * 1000; // 1 minute between attempts
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function nowUTC() {
@@ -77,8 +77,11 @@ async function main() {
     let cycle = 0;
 
     while (true) {
-
-
+        //stop if after working times
+        if (isAfterMarketClose()) {
+            console.log(`[Scraper] Market closed (${formatLocal(nowUTC())}). Exiting cleanly.`);
+            break;
+        }
         cycle++;
         console.log(`\n[Scraper] ── Cycle #${cycle} started at ${formatLocal(nowUTC())} ──`);
 
