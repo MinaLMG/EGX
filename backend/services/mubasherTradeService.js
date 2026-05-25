@@ -15,17 +15,26 @@ class MubasherTradeService {
     async initBrowser() {
         if (this.browser) return;
         const { default: puppeteer } = await import('puppeteer');
-        this.browser = await puppeteer.launch({
-            headless: "new",
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
-        });
-        this.page = await this.browser.newPage();
-        this.page.on('console', msg => {
-            const txt = msg.text();
-            if (txt.includes('Extraction') || txt.includes('Items:')) console.log('Mubasher:', txt);
-        });
-        await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
-        await this.page.setViewport({ width: 1440, height: 900 });
+        
+        try {
+            this.browser = await puppeteer.launch({
+                headless: "new",
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
+            });
+            this.page = await this.browser.newPage();
+            
+            this.page.on('console', msg => {
+                const txt = msg.text();
+                if (txt.includes('Extraction') || txt.includes('Items:')) console.log('Mubasher:', txt);
+            });
+            
+            await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+            await this.page.setViewport({ width: 1440, height: 900 });
+        } catch (err) {
+            this.isMonitoring = false;
+            console.error('Mubasher: Browser initialization failed:', err.message);
+            throw err;
+        }
     }
 
     async login() {
@@ -145,7 +154,7 @@ class MubasherTradeService {
         }));
 
         const result = await Stock.bulkWrite(bulkOps);
-        const updated = result.modifiedCount + result.upsertedCount;
+        const updated = (result.modifiedCount || 0) + (result.upsertedCount || 0);
 
         // Debounce: only recalculate scores once per scrape session (not per stock)
         if (updated > 0) {
@@ -157,20 +166,35 @@ class MubasherTradeService {
     }
 
     async updatePrices() {
+        if (this.isMonitoring) {
+            console.log('Mubasher: Scrape already in progress, skipping...');
+            return 0;
+        }
+
         try {
+            this.isMonitoring = true;
             await this.initBrowser();
-            const url = this.page.url();
+            
+            if (!this.page) throw new Error('Puppeteer page failed to initialize');
+
+            const url = await this.page.url();
             if (url.includes('/login') || !url.includes('/secure/')) await this.login();
+            
             return await this.performUpdateCycle();
         } catch (e) {
             console.error('Mubasher Price Service Error:', e.message);
             throw e;
         } finally {
             if (this.browser) {
-                await this.browser.close();
+                try {
+                    await this.browser.close();
+                } catch (closeErr) {
+                    console.warn('Mubasher: Error closing browser:', closeErr.message);
+                }
                 this.browser = null;
                 this.page = null;
             }
+            this.isMonitoring = false;
         }
     }
 }

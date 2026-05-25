@@ -31,7 +31,7 @@ exports.setSetting = async (key, value) => {
         await SystemConfig.findOneAndUpdate(
             { key },
             { value, key },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
         _cache.delete(key); // Invalidate so next read is fresh
         return true;

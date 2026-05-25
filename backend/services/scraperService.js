@@ -9,34 +9,35 @@ const ConfigHelper = require('../utils/configHelper');
  */
 exports.scrapeAllArabicStocks = async (options = {}) => {
     try {
-        const query = { 
-            arabic_stock_getter: { $exists: true, $ne: null, $ne: '' } 
+        const query = {
+            arabic_stock_getter: { $exists: true, $ne: null, $ne: '' }
         };
-
         if (options.staleOnly) {
             const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-            query.lastUpdated = { $lt: oneDayAgo };
+            query.$or = [
+                { lastUpdated: { $exists: false } },
+                { lastUpdated: { $eq: null } },
+                { lastUpdated: { $eq: undefined } },
+                { lastUpdated: { $lt: oneDayAgo } }
+            ];
         }
-
         let stocksToScrape = await Stock.find(query);
-        
+
         if (options.limit) {
             stocksToScrape = stocksToScrape.slice(0, options.limit);
         }
-        
         console.log(`Found ${stocksToScrape.length} stocks to scrape from arabicstock.com (StaleOnly: ${!!options.staleOnly})`);
 
         const userAgent = await ConfigHelper.getSetting(ConfigHelper.KEYS.USER_AGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-
         let updatedCount = 0;
         for (const stock of stocksToScrape) {
             try {
                 console.log(`Scraping ${stock.ticker} from ${stock.arabic_stock_getter}...`);
-                
+
                 const { data: html } = await axios.get(stock.arabic_stock_getter, {
                     headers: { 'User-Agent': userAgent }
                 });
-                
+
                 const $ = cheerio.load(html);
 
                 // 2. Extract Fair Value
@@ -72,7 +73,7 @@ exports.scrapeAllArabicStocks = async (options = {}) => {
             } catch (err) {
                 console.error(`Failed to scrape ${stock.ticker}:`, err.message);
             }
-            
+
             if (!options.noDelay) {
                 const delay = await ConfigHelper.getSetting(ConfigHelper.KEYS.SCRAPER_DELAY, 2000);
                 await new Promise(resolve => setTimeout(resolve, delay));

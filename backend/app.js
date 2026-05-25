@@ -99,8 +99,8 @@ function scheduleCronJobs() {
         }
     }, { timezone: 'Africa/Cairo' });
 
-    // Daily fair-value scrape: every day at 21:00 Cairo (after market close)
-    cron.schedule('0 21 * * *', async () => {
+    // Daily fair - value scrape: every day at 21:00 Cairo(after market close)
+    cron.schedule('0 0 * * *', async () => {
         try {
             console.log('[Cron] Running daily ArabicStock fair-value scrape...');
             await scraperService.scrapeAllArabicStocks();

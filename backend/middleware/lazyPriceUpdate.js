@@ -63,26 +63,32 @@ module.exports = async (req, res, next) => {
         // 4. Price Update Logic
         // Checks if a price refresh is already in progress or happens too frequently.
         if (!isPriceUpdateInProgress) {
-            const lastUpdateStr = await ConfigHelper.getSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, "0");
-            const lastUpdate = new Date(lastUpdateStr);
-            const diffInMs = now - lastUpdate;
+            isPriceUpdateInProgress = true;
+            try {
+                const lastUpdateStr = await ConfigHelper.getSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, "0");
+                const lastUpdate = new Date(lastUpdateStr);
+                const diffInMs = now - lastUpdate;
 
-            if (diffInMs >= 60000) {
-                isPriceUpdateInProgress = true;
-                console.log(`[LazyUpdate] Scheduling price update (${Math.round(diffInMs / 1000)}s since last)`);
+                if (diffInMs >= 60000) {
+                    console.log(`[LazyUpdate] Scheduling price update (${Math.round(diffInMs / 1000)}s since last)`);
 
-                setImmediate(async () => {
-                    try {
-                        await ConfigHelper.setSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, now.toISOString());
-                        console.log('[LazyUpdate] Starting price scraper...');
-                        const count = await mubasherTradeService.updatePrices();
-                        console.log(`[LazyUpdate] Price update finished: ${count} stocks updated.`);
-                    } catch (err) {
-                        console.error('[LazyUpdate] Background price task failed:', err.message);
-                    } finally {
-                        isPriceUpdateInProgress = false;
-                    }
-                });
+                    setImmediate(async () => {
+                        try {
+                            await ConfigHelper.setSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, now.toISOString());
+                            console.log('[LazyUpdate] Starting price scraper...');
+                            const count = await mubasherTradeService.updatePrices();
+                            console.log(`[LazyUpdate] Price update finished: ${count} stocks updated.`);
+                        } catch (err) {
+                            console.error('[LazyUpdate] Background price task failed:', err.message);
+                        } finally {
+                            isPriceUpdateInProgress = false;
+                        }
+                    });
+                } else {
+                    isPriceUpdateInProgress = false;
+                }
+            } catch (err) {
+                isPriceUpdateInProgress = false;
             }
         }
 
