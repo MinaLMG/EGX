@@ -13,7 +13,7 @@ name: 🕙 EGX Price Scraper (Market Hours)
 # ─────────────────────────────────────────────────────────────────────────────
 on:
   schedule:
-    - cron: '35 16 * * 0-4'   # 06:50 UTC  →  09:50 Cairo (UTC+3)
+    - cron: '54 16 * * 0-4'   # 06:50 UTC  →  09:50 Cairo (UTC+3)
 
   # Allow manual trigger from the GitHub UI for testing
   workflow_dispatch:
