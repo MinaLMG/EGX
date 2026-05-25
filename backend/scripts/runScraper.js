@@ -77,11 +77,7 @@ async function main() {
     let cycle = 0;
 
     while (true) {
-        if (isAfterMarketClose()) {
-            continue;
-            console.log(`[Scraper] Market closed (${formatLocal(nowUTC())}). Exiting cleanly.`);
-            break;
-        }
+
 
         cycle++;
         console.log(`\n[Scraper] ── Cycle #${cycle} started at ${formatLocal(nowUTC())} ──`);
@@ -94,12 +90,7 @@ async function main() {
             // Don't exit on a single cycle failure; keep looping until close time.
         }
 
-        // Check again before sleeping so we don't wait needlessly past close
-        if (isAfterMarketClose()) {
-            continue
-            console.log(`[Scraper] Market closed after cycle. Exiting cleanly.`);
-            break;
-        }
+
 
         console.log(`[Scraper] Waiting ${INTERVAL_MS / 60000} min before next cycle…`);
         await sleep(INTERVAL_MS);
