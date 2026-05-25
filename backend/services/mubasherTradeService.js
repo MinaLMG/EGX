@@ -28,10 +28,11 @@ class MubasherTradeService {
         try {
             if (process.env.VERCEL) {
                 // VERCEL-SPECIFIC LOADING
-                // Requires 'puppeteer-core' and '@sparticuz/chromium'
+                // Use dynamic imports to support ESM packages on Vercel
                 console.log('Mubasher: Configuring browser for Vercel/Serverless...');
-                const chromium = require('@sparticuz/chromium');
-                puppeteer = require('puppeteer-core');
+                const chromium = (await import('@sparticuz/chromium')).default;
+                const { default: p } = await import('puppeteer-core');
+                puppeteer = p;
                 
                 launchOptions.executablePath = await chromium.executablePath();
                 launchOptions.args = [...chromium.args, ...launchOptions.args];
