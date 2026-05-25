@@ -157,9 +157,21 @@ exports.getStocksExcel = async (req, res) => {
             'Any Participation'    // 13 (M)
         ];
 
+        const trialHeaders = [
+            'Trial: BF (i1)',        // rank score
+            'Trial: Fund Raw (i2)',  // raw FV/price-1
+            'Trial: Tech Sum (i3)', // summed rec rank scores
+            'Trial: RFP',           // raw DB value
+            'Trial: RSP',           // raw DB value
+            'Trial: Arab (i4)',      // rank score
+            'Trial Total Score'      // weighted sum
+        ];
+
         users.forEach(user => {
             headers.push(user.name || user.username); // 14+ (N+)
         });
+
+        trialHeaders.forEach(h => headers.push(h));
 
         const headerRow = worksheet.getRow(1);
         headerRow.values = headers;
@@ -175,11 +187,16 @@ exports.getStocksExcel = async (req, res) => {
             const rowIndex = index + 2; // Data starts at row 2
             const bf = bfValues.find(b => b.stock.toString() === stock._id.toString());
             const fundRec = fundamentalRecs.find(r => r.stock.toString() === stock._id.toString());
-            const techRec = technicalRecs.find(r => r.stock.toString() === stock._id.toString());
+            
+            // Get highest technical target for this ticker
+            const tickersTechs = technicalRecs.filter(r => r.stock.toString() === stock._id.toString());
+            const maxTechTarget = tickersTechs.length > 0 
+                ? Math.max(...tickersTechs.map(t => t.target))
+                : null;
 
             const curr = stock.price; // No || 0
             const fundTarget = fundRec?.target;
-            const techTarget = techRec?.target;
+            const techTarget = maxTechTarget;
 
             const rowData = [
                 stock.ticker,
@@ -219,6 +236,17 @@ exports.getStocksExcel = async (req, res) => {
 
             rowData.push(...userPart);
 
+            // Trial score components (after users)
+            rowData.push(
+                stock.trial_bf_potential    ?? null,  // Trial: BF (i1)       — (2*BF/price)-1
+                stock.trial_fundamental_raw ?? null,  // Trial: Fund Raw (i2) — raw FV/price-1
+                stock.trial_technical_sum   ?? null,  // Trial: Tech Sum (i3) — summed rec rank scores
+                stock.trial_rfp_score       ?? null,  // Trial: RFP           — Steep logic
+                stock.trial_rsp_score       ?? null,  // Trial: RSP           — Steep logic
+                stock.trial_arabstock_score ?? null,  // Trial: Arab (i4)     — Steep logic
+                stock.trial_total_score     ?? null   // Trial Total Score
+            );
+
             const row = worksheet.getRow(rowIndex);
             row.values = rowData;
 
@@ -254,6 +282,18 @@ exports.getStocksExcel = async (req, res) => {
             if (index0 === 4 || index0 === 5) {
                 col.numFmt = '0.00%';
             }
+
+            // Style trial score columns with a teal header
+            const trialStartCol = 13 + users.length + 1; // 1-indexed
+            if (index0 >= trialStartCol - 1) {
+                const headerCell = worksheet.getCell(1, index0 + 1);
+                headerCell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF00796B' } // Teal — trial columns
+                };
+                headerCell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            }
         });
 
         // Freeze top row and first column
@@ -262,7 +302,8 @@ exports.getStocksExcel = async (req, res) => {
         ];
 
         // Add Auto-Filter to all columns
-        const lastColNum = 13 + users.length;
+        // lastColNum now includes trial columns (7 extra)
+        const lastColNum = 13 + users.length + 7;
         const lastLetter = worksheet.getColumn(lastColNum).letter;
         worksheet.autoFilter = `A1:${lastLetter}1`;
 
@@ -313,11 +354,12 @@ exports.getStocksExcel = async (req, res) => {
         });
 
         // 3. Any Participation (M) and Users (N+): 2-Color Scale (White -> Green)
+        //    Range ends at last user column, NOT including trial columns
         const startLetter = 'M';
-        // ExcelJS doesn't support easy column name generation for large indices, but we can use ranges
-        const endLetter = worksheet.getColumn(lastColNum).letter;
+        const userEndColNum = 13 + users.length;
+        const userEndLetter = worksheet.getColumn(userEndColNum).letter;
         worksheet.addConditionalFormatting({
-            ref: `${startLetter}2:${endLetter}${lastRow}`,
+            ref: `${startLetter}2:${userEndLetter}${lastRow}`,
             rules: [
                 {
                     type: 'colorScale',
@@ -332,6 +374,27 @@ exports.getStocksExcel = async (req, res) => {
                 }
             ]
         });
+
+        // 4. Trial Total Score: Teal heatmap (White -> Teal)
+        const trialTotalColNum = 13 + users.length + 7;
+        const trialTotalLetter = worksheet.getColumn(trialTotalColNum).letter;
+        worksheet.addConditionalFormatting({
+            ref: `${trialTotalLetter}2:${trialTotalLetter}${lastRow}`,
+            rules: [
+                {
+                    type: 'colorScale',
+                    cfvo: [
+                        { type: 'min' },
+                        { type: 'max' }
+                    ],
+                    color: [
+                        { argb: 'FFFFFFFF' }, // White (low)
+                        { argb: 'FF00897B' }  // Teal (high)
+                    ]
+                }
+            ]
+        });
+
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=fair.xlsx');

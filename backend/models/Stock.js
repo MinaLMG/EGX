@@ -28,7 +28,14 @@ const StockSchema = new mongoose.Schema({
     rfp_score: { type: Number, default: 0 },
     rsp_score: { type: Number, default: 0 },
     arabstock_score: { type: Number, default: 0 },
-    total_score: { type: Number, default: 0 }
+    total_score: { type: Number, default: 0 },
+    trial_total_score: { type: Number, default: 0 },
+    trial_fundamental_raw: { type: Number, default: 0 },  // raw FV/price - 1 (trial only)
+    trial_technical_sum: { type: Number, default: 0 },   // sum of per-rec rank scores (trial only)
+    trial_bf_potential: { type: Number, default: 0 },     // (2*BF/price)-1 (trial only)
+    trial_rfp_score: { type: Number, default: 0 },
+    trial_rsp_score: { type: Number, default: 0 },
+    trial_arabstock_score: { type: Number, default: 0 }
 });
 
 // Index matching the sort used in getStocks / getStocksMatrix / scoringService

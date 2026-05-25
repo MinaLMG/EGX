@@ -4,15 +4,27 @@ const Stock = require('../models/Stock');
 const ConfigHelper = require('../utils/configHelper');
 
 /**
- * Scrapes fair values for all stocks with an arabic_stock_getter URL
+ * Scrapes fair values for stocks with an arabic_stock_getter URL
+ * @param {Object} options - { staleOnly: boolean, limit: number }
  */
-exports.scrapeAllArabicStocks = async () => {
+exports.scrapeAllArabicStocks = async (options = {}) => {
     try {
-        const stocksToScrape = await Stock.find({ 
+        const query = { 
             arabic_stock_getter: { $exists: true, $ne: null, $ne: '' } 
-        });
+        };
+
+        if (options.staleOnly) {
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            query.lastUpdated = { $lt: oneDayAgo };
+        }
+
+        let stocksToScrape = await Stock.find(query);
         
-        console.log(`Found ${stocksToScrape.length} stocks to scrape from arabicstock.com`);
+        if (options.limit) {
+            stocksToScrape = stocksToScrape.slice(0, options.limit);
+        }
+        
+        console.log(`Found ${stocksToScrape.length} stocks to scrape from arabicstock.com (StaleOnly: ${!!options.staleOnly})`);
 
         const userAgent = await ConfigHelper.getSetting(ConfigHelper.KEYS.USER_AGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
@@ -59,8 +71,10 @@ exports.scrapeAllArabicStocks = async () => {
                 console.error(`Failed to scrape ${stock.ticker}:`, err.message);
             }
             
-            const delay = await ConfigHelper.getSetting(ConfigHelper.KEYS.SCRAPER_DELAY, 2000);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            if (!options.noDelay) {
+                const delay = await ConfigHelper.getSetting(ConfigHelper.KEYS.SCRAPER_DELAY, 2000);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
         }
 
         console.log('Scrape session completed.');

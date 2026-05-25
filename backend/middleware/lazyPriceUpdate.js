@@ -25,7 +25,32 @@ module.exports = async (req, res, next) => {
         const now = new Date();
         const cairoNow = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Cairo' }));
 
-        // 2. Market Hours Check (9:50 - 20:30 Cairo)
+        // 2. Daily Fair Value Scraping (Every 24 hours) check
+        // This runs regardless of market hours because fair values update independently.
+        const lastArabScrapeStr = await ConfigHelper.getSetting('LAST_ARABSTOCK_SCRAPE', "0");
+        const lastArabScrape = new Date(lastArabScrapeStr);
+        const timeSinceArabScrape = now - lastArabScrape;
+
+        if (timeSinceArabScrape >= 24 * 60 * 60 * 1000) {
+            console.log(`[LazyUpdate] Triggering background ArabicStock scrape (Last was ${Math.round(timeSinceArabScrape / (1000 * 60 * 60))}h ago)`);
+            
+            // Set timestamp early to avoid overlaps while worker runs
+            await ConfigHelper.setSetting('LAST_ARABSTOCK_SCRAPE', now.toISOString());
+
+            setImmediate(async () => {
+                try {
+                    const scraperService = require('../services/scraperService');
+                    console.log('[LazyUpdate] Starting background fair-value scraper (ArabicStock)...');
+                    // Fast incremental scrape: up to 50 stale stocks per request, no artificial delay on Vercel
+                    await scraperService.scrapeAllArabicStocks({ staleOnly: true, limit: 50, noDelay: true });
+                    console.log('[LazyUpdate] Background fair-value update finished.');
+                } catch (err) {
+                    console.error('[LazyUpdate] Background ArabStock scrape failed:', err.message);
+                }
+            });
+        }
+
+        // 3. Market Hours Check (9:50 - 15:00 Cairo) for PRICE updates
         const day = cairoNow.getDay();
         const hours = cairoNow.getHours();
         const minutes = cairoNow.getMinutes();
@@ -38,7 +63,7 @@ module.exports = async (req, res, next) => {
             return next();
         }
 
-        // 3. Throttle Check (Update every 1 minute)
+        // 4. Price Throttle Check (Update every 1 minute)
         const lastUpdateStr = await ConfigHelper.getSetting(ConfigHelper.KEYS.LAST_PRICE_UPDATE, "0");
         const lastUpdate = new Date(lastUpdateStr);
         const diffInMs = now - lastUpdate;
@@ -48,7 +73,7 @@ module.exports = async (req, res, next) => {
             return next();
         }
 
-        console.log(`[LazyUpdate] Scheduling background update (Last update was ${Math.round(diffInMs / 1000)}s ago)`);
+        console.log(`[LazyUpdate] Scheduling background price update (Last update was ${Math.round(diffInMs / 1000)}s ago)`);
 
         setImmediate(async () => {
             try {
@@ -60,16 +85,16 @@ module.exports = async (req, res, next) => {
                 const count = await mubasherTradeService.updatePrices();
                 console.log(`[LazyUpdate] Background price update finished: ${count} stocks updated.`);
             } catch (err) {
-                console.error('[LazyUpdate] Background task failed:', err.message);
+                console.error('[LazyUpdate] Background price task failed:', err.message);
             } finally {
-                // Always release the lock
+                // Release the global middle-ware lock after the price check
                 isUpdateInProgress = false;
             }
         });
 
     } catch (error) {
         console.error('[LazyUpdate] Middleware error:', error.message);
-        isUpdateInProgress = false; // Emergency release if error occurs before setImmediate
+        isUpdateInProgress = false; 
     }
 
     next();
