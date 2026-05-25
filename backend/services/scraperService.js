@@ -5,7 +5,7 @@ const ConfigHelper = require('../utils/configHelper');
 
 /**
  * Scrapes fair values for stocks with an arabic_stock_getter URL
- * @param {Object} options - { staleOnly: boolean, limit: number }
+ * @param {Object} options - { staleOnly: boolean, limit: number, noDelay: boolean }
  */
 exports.scrapeAllArabicStocks = async (options = {}) => {
     try {
@@ -28,6 +28,7 @@ exports.scrapeAllArabicStocks = async (options = {}) => {
 
         const userAgent = await ConfigHelper.getSetting(ConfigHelper.KEYS.USER_AGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
+        let updatedCount = 0;
         for (const stock of stocksToScrape) {
             try {
                 console.log(`Scraping ${stock.ticker} from ${stock.arabic_stock_getter}...`);
@@ -65,6 +66,7 @@ exports.scrapeAllArabicStocks = async (options = {}) => {
                 stock.lastUpdated = new Date();
 
                 await stock.save();
+                updatedCount++;
                 console.log(`Updated ${stock.ticker}: FairValue=${fairValue}, AnalyzersFairValue=${analyzersFairValue}`);
 
             } catch (err) {
@@ -77,8 +79,10 @@ exports.scrapeAllArabicStocks = async (options = {}) => {
             }
         }
 
-        console.log('Scrape session completed.');
+        console.log(`Scrape session completed. Updated ${updatedCount} stocks.`);
+        return updatedCount;
     } catch (err) {
         console.error('Error during scrape service:', err.message);
+        return 0;
     }
 };
