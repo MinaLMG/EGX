@@ -62,7 +62,7 @@ function scheduleCronJobs() {
     let isScraping = false;
 
     // Price update: every minute during EGX market hours (Sun–Thu, 09:50–15:00)
-    cron.schedule('* * * * *', async () => {
+    cron.schedule('*/1 9-14 * * 0-4', async () => {
         if (isScraping) {
             console.log('[Cron] Skipping tick — previous scrape still in progress.');
             return;
@@ -74,7 +74,7 @@ function scheduleCronJobs() {
         const m = cairoNow.getMinutes();
         const isWorkingDay = day >= 0 && day <= 4;
         const isMarketHour = (h > 9 || (h === 9 && m >= 50)) && h < 15;
-
+        console.log(isWorkingDay, isMarketHour);
         if (!isWorkingDay || !isMarketHour) return;
 
         isScraping = true;

@@ -212,6 +212,25 @@ class MubasherTradeService {
             this.isMonitoring = false;
         }
     }
+
+    /**
+     * Cleanly closes the browser. Called by external runners (e.g. runScraper.js)
+     * after a full market session is complete.
+     */
+    async closeBrowser() {
+        if (this.browser) {
+            try {
+                await this.browser.close();
+                console.log('Mubasher: Browser closed.');
+            } catch (e) {
+                console.warn('Mubasher: Error closing browser:', e.message);
+            } finally {
+                this.browser = null;
+                this.page = null;
+                this.isMonitoring = false;
+            }
+        }
+    }
 }
 
 module.exports = new MubasherTradeService();

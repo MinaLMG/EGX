@@ -15,7 +15,7 @@ const DEFAULT_WEIGHTS = {
 };
 const TRIAL_WEIGHTS = {
     fundamental: 2.0,
-    bf: 1,
+    bf: 0.5,
     rfp: 1.2,
     rsp: 1.2,
     technical: 0.8,
