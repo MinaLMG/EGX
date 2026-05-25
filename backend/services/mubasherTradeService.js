@@ -12,15 +12,37 @@ class MubasherTradeService {
         this.isMonitoring = false;
     }
 
+    /**
+     * Initializes the browser. 
+     * Handles the complex configuration required to run Puppeteer on Vercel.
+     */
     async initBrowser() {
         if (this.browser) return;
-        const { default: puppeteer } = await import('puppeteer');
-        
+
+        let puppeteer;
+        let launchOptions = {
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security', '--disable-features=IsolateOrigins,site-per-process'],
+            headless: "new"
+        };
+
         try {
-            this.browser = await puppeteer.launch({
-                headless: "new",
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
-            });
+            if (process.env.VERCEL) {
+                // VERCEL-SPECIFIC LOADING
+                // Requires 'puppeteer-core' and '@sparticuz/chromium'
+                console.log('Mubasher: Configuring browser for Vercel/Serverless...');
+                const chromium = require('@sparticuz/chromium');
+                puppeteer = require('puppeteer-core');
+                
+                launchOptions.executablePath = await chromium.executablePath();
+                launchOptions.args = [...chromium.args, ...launchOptions.args];
+            } else {
+                // LOCAL/VPS LOADING
+                console.log('Mubasher: Configuring browser for Local/Standard environment...');
+                const { default: p } = await import('puppeteer');
+                puppeteer = p;
+            }
+
+            this.browser = await puppeteer.launch(launchOptions);
             this.page = await this.browser.newPage();
             
             this.page.on('console', msg => {
@@ -30,9 +52,12 @@ class MubasherTradeService {
             
             await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
             await this.page.setViewport({ width: 1440, height: 900 });
+            
         } catch (err) {
             this.isMonitoring = false;
-            console.error('Mubasher: Browser initialization failed:', err.message);
+            console.error('Mubasher: Browser initialization failed.');
+            console.error('NOTE: If running on Vercel, ensured you have "puppeteer-core" and "@sparticuz/chromium" installed.');
+            console.error('Error:', err.message);
             throw err;
         }
     }
@@ -63,7 +88,6 @@ class MubasherTradeService {
     async performUpdateCycle() {
         console.log('Mubasher: Starting price update cycle...');
         const priceData = await this.page.evaluate(async () => {
-            // 1. Navigation to Watchlist
             const nav = () => {
                 const btn = Array.from(document.querySelectorAll('div, span, mat-list-item'))
                     .find(d => d.innerText?.trim() === 'Watchlist');
@@ -77,7 +101,6 @@ class MubasherTradeService {
                 if (document.querySelectorAll('.ag-row').length > 0) break;
             }
 
-            // 2. Viewport and Column Discovery
             const viewport = document.querySelector('.ag-body-viewport, .ag-center-cols-viewport') ||
                 Array.from(document.querySelectorAll('div')).find(d => d.scrollHeight > d.clientHeight && d.className.includes('ag-'));
 
@@ -90,19 +113,15 @@ class MubasherTradeService {
                 if (t.includes('last') || (t.includes('price') && !t.includes('change'))) pCol = id;
             });
 
-            // 3. Merged Scanning (Pinned + Center Fragments)
             const results = new Map();
             const scan = () => {
                 document.querySelectorAll('.ag-row').forEach(row => {
                     const id = row.getAttribute('row-id') || row.getAttribute('aria-rowindex');
                     if (!id) return;
-
                     if (!results.has(id)) results.set(id, { ticker: null, price: null });
                     const entry = results.get(id);
-
                     const tCell = row.querySelector(`[col-id="${sCol}"]`) || row.querySelector('[col-id="0"]');
                     const pCell = row.querySelector(`[col-id="${pCol}"]`) || row.querySelector('[col-id="1"]');
-
                     if (tCell && !entry.ticker) {
                         const rawTicker = tCell.innerText.trim().split(/\s/)[0];
                         if (rawTicker.length > 1) entry.ticker = rawTicker;
@@ -115,7 +134,6 @@ class MubasherTradeService {
                 });
             };
 
-            // 4. Initial Scan & Scroll Loop
             for (let j = 0; j < 5; j++) {
                 scan();
                 if (Array.from(results.values()).some(v => v.ticker && v.price)) break;
@@ -136,15 +154,12 @@ class MubasherTradeService {
             }
 
             const final = Array.from(results.values()).filter(v => v.ticker && v.price !== null);
-            console.log(`Mubasher: Extraction complete. Valid Items: ${final.length}`);
             return final;
         });
 
         if (!priceData || priceData.length === 0) return 0;
 
         const now = new Date();
-
-        // Single bulkWrite instead of one DB call per stock
         const bulkOps = priceData.map(item => ({
             updateOne: {
                 filter: { ticker: item.ticker.toUpperCase() },
@@ -156,7 +171,6 @@ class MubasherTradeService {
         const result = await Stock.bulkWrite(bulkOps);
         const updated = (result.modifiedCount || 0) + (result.upsertedCount || 0);
 
-        // Debounce: only recalculate scores once per scrape session (not per stock)
         if (updated > 0) {
             clearTimeout(this._scoreDebounce);
             this._scoreDebounce = setTimeout(() => ScoringService.calculateAllScores(), 2000);
@@ -174,7 +188,6 @@ class MubasherTradeService {
         try {
             this.isMonitoring = true;
             await this.initBrowser();
-            
             if (!this.page) throw new Error('Puppeteer page failed to initialize');
 
             const url = await this.page.url();
@@ -182,7 +195,7 @@ class MubasherTradeService {
             
             return await this.performUpdateCycle();
         } catch (e) {
-            console.error('Mubasher Price Service Error:', e.message);
+            console.error('Mubasher Trade Service Error:', e.message);
             throw e;
         } finally {
             if (this.browser) {

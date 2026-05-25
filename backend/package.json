@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@sparticuz/chromium": "^148.0.0",
     "axios": "^1.16.1",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
@@ -23,7 +24,8 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.2",
     "node-cron": "^4.2.1",
-    "puppeteer": "^25.0.4"
+    "puppeteer": "^25.0.4",
+    "puppeteer-core": "^25.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
