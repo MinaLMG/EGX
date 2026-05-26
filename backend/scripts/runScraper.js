@@ -100,8 +100,9 @@ async function main() {
     }
 
     try {
+        await mubasherTradeService.closeBrowser();
         await mongoose.disconnect();
-        console.log('[Scraper] MongoDB disconnected. Goodbye.');
+        console.log('[Scraper] Session finished. MongoDB disconnected. Goodbye.');
     } catch (_) { }
 
     process.exit(0);

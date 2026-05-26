@@ -17,7 +17,7 @@ class MubasherTradeService {
      * Handles the complex configuration required to run Puppeteer on Vercel.
      */
     async initBrowser() {
-        if (this.browser) return;
+        if (this.browser && this.page) return;
 
         let puppeteer;
         let launchOptions = {
@@ -200,15 +200,6 @@ class MubasherTradeService {
             console.error('Mubasher Trade Service Error:', e.message);
             throw e;
         } finally {
-            if (this.browser) {
-                try {
-                    await this.browser.close();
-                } catch (closeErr) {
-                    console.warn('Mubasher: Error closing browser:', closeErr.message);
-                }
-                this.browser = null;
-                this.page = null;
-            }
             this.isMonitoring = false;
         }
     }
