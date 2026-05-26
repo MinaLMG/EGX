@@ -62,22 +62,22 @@ class ScoringService {
                         update: {
                             $set: {
                                 // Default/Legacy fields
-                                total_score: legacy.total || 0,
-                                bf_potential: legacy.bf || 0,
-                                fundamental_potential: legacy.fundamental || 0,
-                                technical_potential: legacy.technical || 0,
-                                arabstock_score: legacy.arabstock || 0,
-                                rfp_score: legacy.rfp || 0,
-                                rsp_score: legacy.rsp || 0,
+                                total_score: main.total || 0,
+                                bf_potential: main.bf || 0,
+                                fundamental_potential: main.fundamental || 0,
+                                technical_potential: main.technical || 0,
+                                arabstock_score: main.arabstock || 0,
+                                rfp_score: main.rfp || 0,
+                                rsp_score: main.rsp || 0,
 
                                 // Trial/Steep fields
-                                trial_total_score: steep.total || 0,
-                                trial_bf_potential: steep.bf || 0,
-                                trial_fundamental_raw: steep.fundamental || 0,
-                                trial_technical_sum: steep.technical || 0,
-                                trial_rfp_score: steep.rfp || 0,
-                                trial_rsp_score: steep.rsp || 0,
-                                trial_arabstock_score: steep.arabstock || 0
+                                trial_total_score: trial.total || 0,
+                                trial_bf_potential: trial.bf || 0,
+                                trial_fundamental_raw: trial.fundamental || 0,
+                                trial_technical_sum: trial.technical || 0,
+                                trial_rfp_score: trial.rfp || 0,
+                                trial_rsp_score: trial.rsp || 0,
+                                trial_arabstock_score: trial.arabstock || 0
                             }
                         }
                     }
