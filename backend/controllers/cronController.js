@@ -1,3 +1,4 @@
+const axios = require('axios');
 const ConfigHelper = require('../utils/configHelper');
 const mubasherTradeService = require('../services/mubasherTradeService');
 const scraperService = require('../services/scraperService');
@@ -73,4 +74,45 @@ exports.syncAll = async (req, res) => {
     try { f = await scraperService.scrapeAllArabicStocks({ staleOnly: true, limit: 3 }); } catch (e) { }
 
     res.json({ status: 'success', prices: p, fairValues: f, elapsed: Date.now() - start });
+};
+
+/**
+ * NEW: Triggers the GitHub Action Scraper via API
+ * This allows us to use an external pinger (cron-job.org) to start the heavy
+ * 5-hour scraper on GitHub without hitting Vercel timeouts or CPU limits.
+ */
+exports.triggerGitHubScraper = async (req, res) => {
+    if (!checkAuth(req)) return res.status(401).json({ message: 'Unauthorized' });
+
+    console.log('[Trigger] Waking up GitHub Scraper...');
+    
+    const GITHUB_PAT = process.env.GITHUB_PAT;
+    const REPO_OWNER = 'MinaLMG';
+    const REPO_NAME = 'EGX';
+
+    if (!GITHUB_PAT) {
+        return res.status(500).json({ status: 'error', message: 'GITHUB_PAT not configured' });
+    }
+
+    try {
+        await axios.post(
+            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`,
+            { event_type: 'trigger-scraper' },
+            {
+                headers: {
+                    'Authorization': `token ${GITHUB_PAT}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            }
+        );
+
+        res.json({ status: 'success', message: 'GitHub Action triggered successfully' });
+    } catch (error) {
+        console.error('[Trigger] GitHub API Error:', error.response?.data || error.message);
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Failed to trigger GitHub',
+            details: error.response?.data || error.message
+        });
+    }
 };

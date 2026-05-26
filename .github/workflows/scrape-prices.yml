@@ -13,7 +13,11 @@ name: 🕙 EGX Price Scraper (Market Hours)
 # ─────────────────────────────────────────────────────────────────────────────
 on:
   schedule:
-    - cron: '30 13 * * 0-4'   # TEST: 18:15 UTC = 21:15 Cairo — revert to '50 6' after test
+    - cron: '40 6 * * 0-4'
+
+  # This allows our Vercel API to trigger the scraper instantly
+  repository_dispatch:
+    types: [trigger-scraper]
 
   # Allow manual trigger from the GitHub UI for testing
   workflow_dispatch:
