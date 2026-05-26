@@ -95,7 +95,7 @@ exports.triggerGitHubScraper = async (req, res) => {
     }
 
     try {
-        await axios.post(
+        const response = await axios.post(
             `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`,
             { event_type: 'trigger-scraper' },
             {
@@ -106,7 +106,8 @@ exports.triggerGitHubScraper = async (req, res) => {
             }
         );
 
-        res.json({ status: 'success', message: 'GitHub Action triggered successfully' });
+        console.log(`[Trigger] GitHub responded with status: ${response.status}`);
+        res.json({ status: 'success', message: 'GitHub Action triggered successfully', code: response.status });
     } catch (error) {
         console.error('[Trigger] GitHub API Error:', error.response?.data || error.message);
         res.status(500).json({ 

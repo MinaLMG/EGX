@@ -16,8 +16,7 @@ on:
     - cron: '40 6 * * 0-4'
 
   # This allows our Vercel API to trigger the scraper instantly
-  repository_dispatch:
-    types: [trigger-scraper]
+  repository_dispatch: {}
 
   # Allow manual trigger from the GitHub UI for testing
   workflow_dispatch:
