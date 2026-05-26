@@ -12,11 +12,14 @@ name: 🕙 EGX Price Scraper (Market Hours)
 # GitHub cron uses standard cron where 0=Sunday, so Sun–Thu = 0,1,2,3,4
 # ─────────────────────────────────────────────────────────────────────────────
 on:
+  push:
+    branches: [ main ]
   schedule:
     - cron: '40 6 * * 0-4'
 
   # This allows our Vercel API to trigger the scraper instantly
-  repository_dispatch: {}
+  repository_dispatch:
+    types: [trigger-scraper]
 
   # Allow manual trigger from the GitHub UI for testing
   workflow_dispatch:
