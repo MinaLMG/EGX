@@ -33,3 +33,4 @@ This document tracks the architectural decisions made to solve the "Real-time Ma
     2. **Trigger:** Vercel (API) sends a `repository_dispatch` signal to GitHub.
     3. **Worker:** GitHub Actions runs the heavy 5-hour Puppeteer loop.
 - **Key Strategy:** Zero cost, no credit card required, and 100% reliable start times by bypassing GitHub's internal scheduler.
+- **Optimization:** Implemented a persistent browser session across the 5-hour loop, reducing "Double Logins" and cutting cycle overhead by ~45 seconds.
