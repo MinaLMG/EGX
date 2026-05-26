@@ -45,17 +45,16 @@ class ScoringService {
             const rawData = { bfValues, fundamentalRecs, technicalRecs, rfpRecs, rspRecs };
 
             // Scoring phase
-            // 1. Legacy Scoring System (Standard calculations)
-            const legacyResultsMap = this._legacyScoringSystem(stocks, rawData, weights);
+            // 1. Main Scoring System (Standard calculations)
+            const mainResultsMap = this._steepScoringSystem(stocks, rawData, TRIAL_WEIGHTS);
 
-            // 2. Steep Scoring System (Aggressive calculations)
-            const steepResultsMap = this._steepScoringSystem(stocks, rawData, TRIAL_WEIGHTS);
-
+            // 2. Trial Scoring System (for future calculations -if needed-)
+            const trialResultsMap = this._legacyScoringSystem(stocks, rawData, weights);
             // Persistence phase
             const bulkOps = stocks.map(stock => {
                 const stockId = stock._id.toString();
-                const legacy = legacyResultsMap.get(stockId) || {};
-                const steep = steepResultsMap.get(stockId) || {};
+                const main = mainResultsMap.get(stockId) || {};
+                const trial = trialResultsMap.get(stockId) || {};
 
                 return {
                     updateOne: {
