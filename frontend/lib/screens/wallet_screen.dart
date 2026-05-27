@@ -529,7 +529,6 @@ class _WalletScreenState extends State<WalletScreen> {
     });
 
     final top3 = items.take(3).toList();
-    const margin = 0.01;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
@@ -556,14 +555,14 @@ class _WalletScreenState extends State<WalletScreen> {
               final qty = item['quantity'] as num;
               if (qty == 0) return SizedBox.shrink();
 
+              final currentPrice = item['currentPrice'] as num;
               final isSellingSide =
                   item['realMarketValue'] > item['supposedValue'];
-              final targetFactor = isSellingSide
-                  ? (1.1 + margin)
-                  : (0.9 - margin);
-              final targetPrice = (item['supposedValue'] * targetFactor) / qty;
-              final tradeValue = item['supposedValue'] * 0.1;
-              final currentPrice = item['currentPrice'] as num;
+              final targetPrice = (isSellingSide
+                      ? item['sellTarget']
+                      : item['buyTarget']) ??
+                  0.0;
+              final tradeValue = (item['gap'] as num).abs();
 
               return Card(
                 elevation: 4,

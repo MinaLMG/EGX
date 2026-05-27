@@ -66,14 +66,22 @@ const _calcWalletInternal = async (userId) => {
                 suggestion = 'Buy';
             }
 
+            const fairPrice = item.quantity > 0 ? (supposedValue / item.quantity) : 0;
+            const margin = 0.01;
+            const buyTarget = fairPrice * (1 - threshold - margin);
+            const sellTarget = fairPrice * (1 + threshold + margin);
+
             analysis.push({
                 ticker: item.stock.ticker,
                 name: item.stock.name,
                 quantity: item.quantity,
-                rank: i + 1, // Store original score-based rank
+                rank: i + 1,
                 currentPrice,
                 realMarketValue,
                 supposedValue,
+                fairPrice,
+                buyTarget,
+                sellTarget,
                 gap,
                 suggestion
             });
