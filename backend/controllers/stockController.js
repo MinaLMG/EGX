@@ -141,19 +141,19 @@ exports.getStocksExcel = async (req, res) => {
             'Technical Score',     // 8 (H)
             'RFP Score',           // 9 (I)
             'RSP Score',           // 10 (J)
-            'ArabStock (i4)',      // 11 (K)
+            'ArabStock',           // 11 (K)
             'Total Score',         // 12 (L)
             'Any Participation'    // 13 (M)
         ];
 
         const trialHeaders = [
-            'Trial: BF (i1)',        // rank score
-            'Trial: Fund Raw (i2)',  // raw FV/price-1
-            'Trial: Tech Sum (i3)', // summed rec rank scores
-            'Trial: RFP',           // raw DB value
-            'Trial: RSP',           // raw DB value
-            'Trial: Arab (i4)',      // rank score
-            'Trial Total Score'      // weighted sum
+            'Trial: BF',
+            'Trial: Fundamental',
+            'Trial: Technical',
+            'Trial: RFP',
+            'Trial: RSP',
+            'Trial: ArabStock',
+            'Trial: Total Score'
         ];
 
         users.forEach(user => {
@@ -194,8 +194,8 @@ exports.getStocksExcel = async (req, res) => {
                 (rowIndex > 1 && curr) ? { formula: `C${rowIndex}/B${rowIndex}` } : null,
                 (rowIndex > 1 && curr && fundTarget) ? { formula: `${fundTarget}/B${rowIndex}-1` } : null,
                 (rowIndex > 1 && curr && techTarget) ? { formula: `${techTarget}/B${rowIndex}-1` } : null,
-                stock.fundamental_potential,
-                stock.technical_potential,
+                stock.fundamental_score,
+                stock.technical_score,
                 stock.rfp_score || null,   // blank if not in RFP list
                 stock.rsp_score || null,   // blank if not in RSP list
                 stock.arabstock_score,
@@ -227,13 +227,13 @@ exports.getStocksExcel = async (req, res) => {
 
             // Trial score components (after users)
             rowData.push(
-                stock.trial_bf_potential ?? null,  // Trial: BF (i1)       — (2*BF/price)-1
-                stock.trial_fundamental_raw ?? null,  // Trial: Fund Raw (i2) — raw FV/price-1
-                stock.trial_technical_sum ?? null,  // Trial: Tech Sum (i3) — summed rec rank scores
-                stock.trial_rfp_score ?? null,  // Trial: RFP           — Steep logic
-                stock.trial_rsp_score ?? null,  // Trial: RSP           — Steep logic
-                stock.trial_arabstock_score ?? null,  // Trial: Arab (i4)     — Steep logic
-                stock.trial_total_score ?? null   // Trial Total Score
+                stock.trial_bf_score ?? null,
+                stock.trial_fundamental_score ?? null,
+                stock.trial_technical_score ?? null,
+                stock.trial_rfp_score ?? null,
+                stock.trial_rsp_score ?? null,
+                stock.trial_arabstock_score ?? null,
+                stock.trial_total_score ?? null
             );
 
             const row = worksheet.getRow(rowIndex);
@@ -263,9 +263,9 @@ exports.getStocksExcel = async (req, res) => {
 
             // Hide internal rank-score columns G (i2), H (i3), K (i4)
             // Keep I (RFP) and J (RSP) visible
-            if (index0 === 6 || index0 === 7 || index0 === 10) {
-                col.hidden = true;
-            }
+            // if (index0 === 6 || index0 === 7 || index0 === 10) {
+            //     col.hidden = true;
+            // }
 
             // Percentage format for Fund (E=4) and Techn (F=5)
             if (index0 === 4 || index0 === 5) {

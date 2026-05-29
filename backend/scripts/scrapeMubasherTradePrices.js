@@ -20,6 +20,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const mubasherTradeService = require('../services/mubasherTradeService');
+const ConfigHelper = require('../utils/configHelper');
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 const TIMEZONE_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3
@@ -75,6 +76,8 @@ async function main() {
     }
 
     let cycle = 0;
+    const waitSeconds = await ConfigHelper.getSetting(ConfigHelper.KEYS.MUBASHER_TRADE_UPDATE_INTERVAL, 45);
+    console.log(`[Scraper] Using update interval: ${waitSeconds}s (DB Setting)`);
 
     while (true) {
         //stop if after working times
@@ -95,8 +98,8 @@ async function main() {
 
 
 
-        console.log(`[Scraper] Waiting ${INTERVAL_MS / 60000} min before next cycle…`);
-        await sleep(INTERVAL_MS);
+        console.log(`[Scraper] Waiting ${waitSeconds} seconds before next cycle…`);
+        await sleep(waitSeconds * 1000);
     }
 
     try {

@@ -4,35 +4,20 @@ const FundamentalRecommendation = require('../models/FundamentalRecommendation')
 const TechnicalRecommendation = require('../models/TechnicalRecommendation');
 const RFPRecommendation = require('../models/RFPRecommendation');
 const RSPRecommendation = require('../models/RSPRecommendation');
-
-const DEFAULT_WEIGHTS = {
-    fundamental: 1.0,
-    bf: 0.8,
-    rfp: 0.7,
-    rsp: 0.7,
-    technical: 0.6,
-    arabstock: 0.5
-};
-const TRIAL_WEIGHTS = {
-    fundamental: 2.0,
-    bf: 0.5,
-    rfp: 1.2,
-    rsp: 1.2,
-    technical: 0.8,
-    arabstock: 0
-};
-
 const ConfigHelper = require('../utils/configHelper');
 
 class ScoringService {
+    /**
+     * Orchestrates the recalculation of scores for all stocks using both
+     * Steep and Legacy strategies.
+     */
     async calculateAllScores(customWeights = {}) {
-        let weights = { ...DEFAULT_WEIGHTS, ...customWeights };
-
         try {
-            const dbWeights = await ConfigHelper.getSetting(ConfigHelper.KEYS.SCORING_WEIGHTS, {});
-            weights = { ...weights, ...dbWeights };
-
             console.log('Starting score recalculation orchestration...');
+
+            // Gathering weights from DB (Algorithm-specific)
+            const steepWeights = await ConfigHelper.getSetting(ConfigHelper.KEYS.STEEP_SCORING_WEIGHTS, {});
+            const legacyWeights = await ConfigHelper.getSetting(ConfigHelper.KEYS.LEGACY_SCORING_WEIGHTS, {});
 
             // Gathering raw data phase
             const stocks = await Stock.find();
@@ -45,39 +30,40 @@ class ScoringService {
             const rawData = { bfValues, fundamentalRecs, technicalRecs, rfpRecs, rspRecs };
 
             // Scoring phase
-            // 1. Main Scoring System (Standard calculations)
-            const mainResultsMap = this._steepScoringSystem(stocks, rawData, TRIAL_WEIGHTS);
+            // 1. Steep Scoring System
+            const steepResultsMap = this._steepScoringSystem(stocks, rawData, steepWeights);
 
-            // 2. Trial Scoring System (for future calculations -if needed-)
-            const trialResultsMap = this._legacyScoringSystem(stocks, rawData, weights);
+            // 2. Legacy Scoring System
+            const legacyResultsMap = this._legacyScoringSystem(stocks, rawData, legacyWeights);
+
             // Persistence phase
             const bulkOps = stocks.map(stock => {
                 const stockId = stock._id.toString();
-                const main = mainResultsMap.get(stockId) || {};
-                const trial = trialResultsMap.get(stockId) || {};
+                const steep = steepResultsMap.get(stockId) || {};
+                const legacy = legacyResultsMap.get(stockId) || {};
 
                 return {
                     updateOne: {
                         filter: { _id: stock._id },
                         update: {
                             $set: {
-                                // Default/Legacy fields
-                                total_score: main.total || 0,
-                                bf_potential: main.bf || 0,
-                                fundamental_potential: main.fundamental || 0,
-                                technical_potential: main.technical || 0,
-                                arabstock_score: main.arabstock || 0,
-                                rfp_score: main.rfp || 0,
-                                rsp_score: main.rsp || 0,
+                                // Production fields (Mapping Steep results to generic score fields)
+                                total_score: steep.total || 0,
+                                bf_score: steep.bfScore || 0,
+                                fundamental_score: steep.fundamentalScore || 0,
+                                technical_score: steep.technicalScore || 0,
+                                arabstock_score: steep.arabicStockScore || 0,
+                                rfp_score: steep.rfpScore || 0,
+                                rsp_score: steep.rspScore || 0,
 
-                                // Trial/Steep fields
-                                trial_total_score: trial.total || 0,
-                                trial_bf_potential: trial.bf || 0,
-                                trial_fundamental_raw: trial.fundamental || 0,
-                                trial_technical_sum: trial.technical || 0,
-                                trial_rfp_score: trial.rfp || 0,
-                                trial_rsp_score: trial.rsp || 0,
-                                trial_arabstock_score: trial.arabstock || 0
+                                // Trial fields (Mapping Legacy results to generic trial score fields)
+                                trial_total_score: legacy.total || 0,
+                                trial_bf_score: legacy.bfScore || 0,
+                                trial_fundamental_score: legacy.fundamentalScore || 0,
+                                trial_technical_score: legacy.technicalScore || 0,
+                                trial_rfp_score: legacy.rfpScore || 0,
+                                trial_rsp_score: legacy.rspScore || 0,
+                                trial_arabstock_score: legacy.arabicStockScore || 0
                             }
                         }
                     }
@@ -96,7 +82,7 @@ class ScoringService {
         }
     }
 
-    // --- Private Helper: Rank Ranking ---
+    // --- Private Helper: Utility for Rank-based scoring (0.0 to 1.0) ---
     _calculateRankScores(items) {
         const validItems = items.filter(item => item.potential > 0);
         if (validItems.length === 0) return new Map();
@@ -113,11 +99,10 @@ class ScoringService {
         return scoreMap;
     }
 
-    // --- Legacy Scoring System ---
+    // --- Legacy Scoring Strategy ---
     _legacyScoringSystem(stocks, data, weights) {
         const { bfValues, fundamentalRecs, technicalRecs, rfpRecs, rspRecs } = data;
 
-        // Internal maps for this specific system
         const bfMap = new Map(bfValues.map(v => [v.stock.toString(), v.value]));
         const fundamentalMap = new Map(fundamentalRecs.map(v => [v.stock.toString(), v.target]));
 
@@ -132,59 +117,71 @@ class ScoringService {
         const rfpMap = new Map(rfpRecs.map(v => [v.stock.toString(), v.score]));
         const rspMap = new Map(rspRecs.map(v => [v.stock.toString(), v.score]));
 
-        // Calculate Ranks
-        const i1Map = this._calculateRankScores(stocks.map(s => ({
-            stockId: s._id.toString(),
-            potential: (bfMap.get(s._id.toString()) || 0) / (s.price || 1)
-        })));
+        // Calculate Ranks relative to current price (Only positive upside > 0)
+        const bfRankMap = this._calculateRankScores(stocks.map(s => {
+            const val = bfMap.get(s._id.toString()) || 0;
+            return {
+                stockId: s._id.toString(),
+                potential: val > 0 ? (val / (s.price || 1)) - 1 : 0
+            };
+        }));
 
-        const i2Map = this._calculateRankScores(stocks.map(s => ({
-            stockId: s._id.toString(),
-            potential: (fundamentalMap.get(s._id.toString()) || 0) / (s.price || 1) - 1
-        })));
+        const fundamentalRankMap = this._calculateRankScores(stocks.map(s => {
+            const val = fundamentalMap.get(s._id.toString()) || 0;
+            return {
+                stockId: s._id.toString(),
+                potential: val > 0 ? (val / (s.price || 1)) - 1 : 0
+            };
+        }));
 
-        const i3Map = this._calculateRankScores(stocks.map(s => ({
-            stockId: s._id.toString(),
-            potential: (technicalMap.get(s._id.toString()) || 0) / (s.price || 1) - 1
-        })));
+        const technicalRankMap = this._calculateRankScores(stocks.map(s => {
+            const val = technicalMap.get(s._id.toString()) || 0;
+            return {
+                stockId: s._id.toString(),
+                potential: val > 0 ? (val / (s.price || 1)) - 1 : 0
+            };
+        }));
 
-        const i4Map = this._calculateRankScores(stocks.map(s => {
+        const arabicStockRankMap = this._calculateRankScores(stocks.map(s => {
             const target = s.arabic_stock_analyzers_fair_value || s.arabic_stock_fair_value || 0;
-            const potential = s.price == 0 ? 0 : (target / s.price) - 1;
+            const potential = (target > 0 && s.price > 0) ? (target / s.price) - 1 : 0;
             return { stockId: s._id.toString(), potential };
         }));
 
         const resultsMap = new Map();
         for (const stock of stocks) {
             const stockId = stock._id.toString();
-            const i1 = i1Map.get(stockId) || 0;
-            const i2 = i2Map.get(stockId) || 0;
-            const i3 = i3Map.get(stockId) || 0;
-            const i4Raw = i4Map.get(stockId);
-            const i4 = i4Raw !== undefined ? (i4Raw * 0.5 + 0.5) : 0;
-            const rfp = rfpMap.get(stockId) ? 1 : 0;
-            const rsp = rspMap.get(stockId) || 0;
+            const bfScore = bfRankMap.get(stockId) || 0;
+            const funScore = fundamentalRankMap.get(stockId) || 0;
+            const techScore = technicalRankMap.get(stockId) || 0;
 
-            const totalScore = (weights.bf * i1) +
-                (weights.fundamental * i2) +
-                (weights.technical * i3) +
-                (weights.rfp * rfp) +
-                (weights.rsp * rsp) + (i4 * weights.arabstock) * 0;
+            const arabRawRank = arabicStockRankMap.get(stockId);
+            const arabScore = arabRawRank !== undefined ? (arabRawRank * 0.5 + 0.5) : 0;
+
+            const rfpScore = rfpMap.get(stockId) ? 1 : 0;
+            const rspScore = rspMap.get(stockId) || 0;
+
+            const total = (weights.bf * bfScore) +
+                (weights.fundamental * funScore) +
+                (weights.technical * techScore) +
+                (weights.rfp * rfpScore) +
+                (weights.rsp * rspScore) +
+                (weights.arabstock * arabScore) * 0; // Historically disabled in Legacy
 
             resultsMap.set(stockId, {
-                bf: i1,
-                fundamental: i2,
-                technical: i3,
-                arabstock: i4,
-                rfp: rfp,
-                rsp: rsp,
-                total: totalScore
+                bfScore,
+                fundamentalScore: funScore,
+                technicalScore: techScore,
+                arabicStockScore: arabScore,
+                rfpScore,
+                rspScore,
+                total
             });
         }
         return resultsMap;
     }
 
-    // --- Steep Scoring System ---
+    // --- Steep Scoring Strategy ---
     _steepScoringSystem(stocks, data, weights) {
         const { bfValues, fundamentalRecs, technicalRecs, rfpRecs, rspRecs } = data;
 
@@ -193,9 +190,9 @@ class ScoringService {
         const rfpMap = new Map(rfpRecs.map(v => [v.stock.toString(), v.score]));
         const rspMap = new Map(rspRecs.map(v => [v.stock.toString(), v.score]));
 
-        // Steep technical summation logic
-        const i3SumMapFinal = new Map();
-        const indexedRecs = technicalRecs.map((v, idx) => ({
+        // 1. Technical Summation Rank
+        const technicalSumMap = new Map();
+        const indexedRecs = technicalRecs.map((v) => ({
             stockId: v.stock.toString(),
             potential: v.target / (stocks.find(s => s._id.toString() === v.stock.toString())?.price || 1) - 1
         }));
@@ -204,50 +201,45 @@ class ScoringService {
         const count = validRecs.length;
         validRecs.forEach((r, index) => {
             const recScore = count > 0 ? 1 - (index / count) : 0;
-            i3SumMapFinal.set(r.stockId, (i3SumMapFinal.get(r.stockId) || 0) + recScore);
+            technicalSumMap.set(r.stockId, (technicalSumMap.get(r.stockId) || 0) + recScore);
         });
-
-        // Steep ArabStock rank
-        const i4Map = this._calculateRankScores(stocks.map(s => {
-            const target = s.arabic_stock_analyzers_fair_value || s.arabic_stock_fair_value || 0;
-            const potential = s.price == 0 ? 0 : (target / s.price) - 1;
-            return { stockId: s._id.toString(), potential };
-        }));
 
         const resultsMap = new Map();
         for (const stock of stocks) {
             const stockId = stock._id.toString();
             const price = stock.price || 1;
 
-            // i1 Steep: (2.5*BF/price)-1 filtered
+            // 2. ArabicStock Steep: Capped Upside (Target / Price) - 1 clamped [0, 1]
+            const target = Math.max(stock.arabic_stock_analyzers_fair_value || 0, stock.arabic_stock_fair_value || 0);
+            let arabScore = Math.max(0, (target > 0 && price > 0) ? (target / price) - 1 : 0)
+            arabScore = arabScore > 3 ? 0 : arabScore;
+            // 3. BF Steep: (2.5 * BF / price) - 1
             const bfVal = bfMap.get(stockId) || 0;
-            const i1Steep = Math.max(0, (2.5 * bfVal / price) - 1);
+            const bfScore = Math.max(0, (2.5 * bfVal / price) - 1);
 
-            // i2 Steep: raw Ratio
+            // 4. Fundamental Steep: raw Ratio - 1
             const fv = fundamentalMap.get(stockId) || 0;
-            const i2Steep = fv > 0 ? (fv / price) - 1 : 0;
+            const funScore = fv > 0 ? (fv / price) - 1 : 0;
 
-            const i3Steep = i3SumMapFinal.get(stockId) || 0;
-            const rfpSteep = rfpMap.get(stockId) || 0;
-            const rspSteep = rspMap.get(stockId) || 0;
-            const i4Raw = i4Map.get(stockId);
-            const i4 = i4Raw !== undefined ? (i4Raw * 0.5 + 0.5) : 0;
+            const techScore = technicalSumMap.get(stockId) || 0;
+            const rfpScore = rfpMap.get(stockId) || 0;
+            const rspScore = rspMap.get(stockId) || 0;
 
-            const trialTotalScore = (weights.bf * i1Steep) +
-                (weights.fundamental * i2Steep) +
-                (weights.technical * i3Steep) +
-                (weights.rfp * rfpSteep) +
-                (weights.rsp * rspSteep) +
-                (weights.arabstock * i4);
+            const total = (weights.bf * bfScore) +
+                (weights.fundamental * funScore) +
+                (weights.technical * techScore) +
+                (weights.rfp * rfpScore) +
+                (weights.rsp * rspScore) +
+                (weights.arabstock * arabScore);
 
             resultsMap.set(stockId, {
-                total: trialTotalScore,
-                fundamental: i2Steep,
-                technical: i3Steep,
-                bf: i1Steep,
-                rfp: rfpSteep,
-                rsp: rspSteep,
-                arabstock: i4
+                total,
+                fundamentalScore: funScore,
+                technicalScore: techScore,
+                bfScore,
+                rfpScore,
+                rspScore,
+                arabicStockScore: arabScore
             });
         }
         return resultsMap;

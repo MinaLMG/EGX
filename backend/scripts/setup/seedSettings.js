@@ -11,18 +11,6 @@ const seed = async () => {
 
         const settings = [
             {
-                key: 'scoring_weights',
-                value: {
-                    fundamental: 1.0,
-                    bf: 0.8,
-                    rfp: 0.7,
-                    rsp: 0.7,
-                    technical: 0.6,
-                    arabstock: 0.5
-                },
-                description: 'Weights for total score calculation'
-            },
-            {
                 key: 'scraper_delay',
                 value: 2000,
                 description: 'Delay in ms between ArabicStock page requests'

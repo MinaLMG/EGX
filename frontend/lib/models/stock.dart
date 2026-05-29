@@ -15,9 +15,9 @@ class Stock {
     this.arabicStockAnalyzersFairValue,
     this.arabicStockGetter,
     required this.lastUpdated,
-    this.bfPotential = 0.0,
-    this.fundamentalPotential = 0.0,
-    this.technicalPotential = 0.0,
+    this.bfScore = 0.0,
+    this.fundamentalScore = 0.0,
+    this.technicalScore = 0.0,
     this.arabstockScore = 0.0,
     this.rfpScore = 0.0,
     this.rspScore = 0.0,
@@ -39,9 +39,9 @@ class Stock {
       lastUpdated: json['lastUpdated'] != null 
           ? DateTime.parse(json['lastUpdated']) 
           : DateTime.now(),
-      bfPotential: (json['bf_potential'] as num?)?.toDouble() ?? 0.0,
-      fundamentalPotential: (json['fundamental_potential'] as num?)?.toDouble() ?? 0.0,
-      technicalPotential: (json['technical_potential'] as num?)?.toDouble() ?? 0.0,
+      bfScore: (json['bf_score'] as num?)?.toDouble() ?? 0.0,
+      fundamentalScore: (json['fundamental_score'] as num?)?.toDouble() ?? 0.0,
+      technicalScore: (json['technical_score'] as num?)?.toDouble() ?? 0.0,
       arabstockScore: (json['arabstock_score'] as num?)?.toDouble() ?? 0.0,
       rfpScore: (json['rfp_score'] as num?)?.toDouble() ?? 0.0,
       rspScore: (json['rsp_score'] as num?)?.toDouble() ?? 0.0,
@@ -49,9 +49,9 @@ class Stock {
     );
   }
 
-  final double bfPotential;
-  final double fundamentalPotential;
-  final double technicalPotential;
+  final double bfScore;
+  final double fundamentalScore;
+  final double technicalScore;
   final double arabstockScore;
   final double rfpScore;
   final double rspScore;

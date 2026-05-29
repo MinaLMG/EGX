@@ -44,12 +44,14 @@ exports.setSetting = async (key, value) => {
  * Common settings keys
  */
 exports.KEYS = {
-    SCORING_WEIGHTS:  'scoring_weights',
-    SCRAPER_DELAY:    'scraper_delay',
-    HTTP_TIMEOUT:     'http_timeout',
-    USER_AGENT:       'user_agent',
-    GRAHAM_CONSTANT:  'graham_constant',
-    MARKET_START_HOUR:'market_start_hour',
-    MARKET_END_HOUR:  'market_end_hour',
-    MARKET_END_MINUTE:'market_end_minute'
+    SCRAPER_DELAY: 'scraper_delay',
+    HTTP_TIMEOUT: 'http_timeout',
+    USER_AGENT: 'user_agent',
+    GRAHAM_CONSTANT: 'graham_constant',
+    MARKET_START_HOUR: 'market_start_hour',
+    MARKET_END_HOUR: 'market_end_hour',
+    MARKET_END_MINUTE: 'market_end_minute',
+    MUBASHER_TRADE_UPDATE_INTERVAL: 'mubasher_trade_update_interval',
+    STEEP_SCORING_WEIGHTS: 'steep_scoring_weights',
+    LEGACY_SCORING_WEIGHTS: 'legacy_scoring_weights'
 };

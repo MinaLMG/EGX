@@ -2,6 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const Stock = require('../models/Stock');
 const ConfigHelper = require('../utils/configHelper');
+const scoringService = require('./scoringService');
 
 /**
  * Scrapes fair values for stocks with an arabic_stock_getter URL
@@ -87,6 +88,7 @@ exports.scrapeAllArabicStocks = async (options = {}) => {
         }
 
         console.log(`Scrape session completed. Updated ${updatedCount} stocks.`);
+        await scoringService.calculateAllScores();
         return updatedCount;
     } catch (err) {
         console.error('Error during scrape service:', err.message);
