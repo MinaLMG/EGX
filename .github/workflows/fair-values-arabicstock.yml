@@ -32,4 +32,4 @@ jobs:
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           NODE_ENV: production
-        run: node scripts/runArabicStockScraper.js
+        run: node scripts/scrapeArabicStockFairValues.js

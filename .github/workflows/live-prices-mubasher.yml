@@ -34,4 +34,4 @@ jobs:
           MUBASHER_USER: ${{ secrets.MUBASHER_USER }}
           MUBASHER_PASS: ${{ secrets.MUBASHER_PASS }}
           NODE_ENV: production
-        run: node scripts/runMubasherScraper.js
+        run: node scripts/scrapeMubasherTradePrices.js
