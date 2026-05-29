@@ -2,14 +2,12 @@ const express = require('express');
 const router = express.Router();
 const cronController = require('../controllers/cronController');
 
-// Granular Sync Endpoints
-router.get('/prices', cronController.syncPrices);
-router.get('/fair-values', cronController.syncFairValues);
+// Trigger Endpoints (Hybrid Model)
 
-// NEW: Trigger GitHub Scraper (The "Hybrid" Solution)
-router.get('/trigger-scraper', cronController.triggerGitHubScraper);
+// 1. Live Prices (Mubasher - 5 Hour Loop)
+router.get('/trigger-mubasher-prices', cronController.triggerMubasherPrices);
 
-// Combined Sync (Maintenance)
-router.get('/sync', cronController.syncAll);
+// 2. Fair Values (ArabicStock - Daily Scrape)
+router.get('/trigger-arabicstock-values', cronController.triggerArabicStockValues);
 
 module.exports = router;

@@ -32,5 +32,12 @@ This document tracks the architectural decisions made to solve the "Real-time Ma
     1. **Pinger:** `cron-job.org` hits a Vercel endpoint once/day at 09:40 Cairo.
     2. **Trigger:** Vercel (API) sends a `repository_dispatch` signal to GitHub.
     3. **Worker:** GitHub Actions runs the heavy 5-hour Puppeteer loop.
-- **Key Strategy:** Zero cost, no credit card required, and 100% reliable start times by bypassing GitHub's internal scheduler.
 - **Optimization:** Implemented a persistent browser session across the 5-hour loop, reducing "Double Logins" and cutting cycle overhead by ~45 seconds.
+
+## Trial 7: Full Hybrid Migration
+- **Status:** **COMPLETED**.
+- **Implementation:** 
+    - Removed all heavy scraping logic from Vercel controllers.
+    - Created a second dedicated workflow for daily fair-value scrapes (`daily-scrape.yml`).
+    - Vercel is now purely an API and Trigger coordinator.
+- **Key Strategy:** Complete decoupling of "Data Collection" (GitHub) from "Data Serving" (Vercel).

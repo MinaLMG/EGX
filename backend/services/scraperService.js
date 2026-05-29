@@ -32,7 +32,7 @@ exports.scrapeAllArabicStocks = async (options = {}) => {
         let updatedCount = 0;
         for (const stock of stocksToScrape) {
             try {
-                console.log(`Scraping ${stock.ticker} from ${stock.arabic_stock_getter}...`);
+                // console.log(`Scraping ${stock.ticker} from ${stock.arabic_stock_getter}...`);
 
                 const { data: html } = await axios.get(stock.arabic_stock_getter, {
                     headers: { 'User-Agent': userAgent }
@@ -62,13 +62,19 @@ exports.scrapeAllArabicStocks = async (options = {}) => {
                 const analyzersFairValue = isNaN(analyzersFairValueRaw) ? 0 : analyzersFairValueRaw;
 
                 // Update stock
+                if (stock.arabic_stock_fair_value != fairValue) {
+                    console.log(`Updating ${stock.ticker}: FairValue from ${stock.arabic_stock_fair_value} to ${fairValue}`);
+                }
+                if (stock.arabic_stock_analyzers_fair_value != analyzersFairValue) {
+                    console.log(`Updating ${stock.ticker}: AnalyzersFairValue from ${stock.arabic_stock_analyzers_fair_value} to ${analyzersFairValue}`);
+                }
                 stock.arabic_stock_fair_value = fairValue;
                 stock.arabic_stock_analyzers_fair_value = analyzersFairValue;
                 stock.lastUpdated = new Date();
 
                 await stock.save();
                 updatedCount++;
-                console.log(`Updated ${stock.ticker}: FairValue=${fairValue}, AnalyzersFairValue=${analyzersFairValue}`);
+                // console.log(`Updated ${stock.ticker}: FairValue=${fairValue}, AnalyzersFairValue=${analyzersFairValue}`);
 
             } catch (err) {
                 console.error(`Failed to scrape ${stock.ticker}:`, err.message);

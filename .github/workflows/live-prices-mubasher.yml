@@ -1,0 +1,37 @@
+name: 🕙 EGX Live Price Scraper (Mubasher)
+
+on:
+  # Triggered via Vercel /trigger-mubasher-prices
+  repository_dispatch:
+    types: [trigger-mubasher-prices]
+
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    name: Scrape Prices (Mubasher)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📦 Install Node dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: 🔄 Run Mubasher scraper logic
+        working-directory: backend
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          MUBASHER_USER: ${{ secrets.MUBASHER_USER }}
+          MUBASHER_PASS: ${{ secrets.MUBASHER_PASS }}
+          NODE_ENV: production
+        run: node scripts/runMubasherScraper.js
