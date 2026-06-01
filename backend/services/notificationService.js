@@ -55,6 +55,13 @@ class NotificationService {
                 const lastSuggestions = (user.lastPendingSuggestions || []).sort();
 
                 const hasChanged = JSON.stringify(currentSuggestions) !== JSON.stringify(lastSuggestions);
+
+                if (hasChanged) {
+                    console.log(`[Notification Debug] User: ${user.email}`);
+                    console.log(`[Notification Debug] Current: ${JSON.stringify(currentSuggestions)}`);
+                    console.log(`[Notification Debug] Last: ${JSON.stringify(lastSuggestions)}`);
+                }
+
                 if (hasChanged && currentSuggestions.length > 0) {
                     // Build Arabic content listing each action
                     const buyTickers = (result.analysis || [])
@@ -110,17 +117,41 @@ class NotificationService {
                 type
             });
 
-            // Send via FCM if token exists and Firebase is init
-            if (user.fcmToken && this.isInitialized) {
-                const message = {
-                    notification: { title, body: content },
-                    token: user.fcmToken
-                };
+            // Send via FCM if tokens exist and Firebase is init
+            if (user.fcmTokens && user.fcmTokens.length > 0 && this.isInitialized) {
+                const invalidTokens = [];
+                
+                // Send to all registered devices
+                const sendPromises = user.fcmTokens.map(async (token) => {
+                    try {
+                        const message = {
+                            notification: { title, body: content },
+                            token: token
+                        };
+                        await admin.messaging().send(message);
+                        console.log(`FCM Sent to ${user.email} on device ${token.substring(0, 10)}...`);
+                    } catch (error) {
+                        // If token is invalid or expired, mark it for removal
+                        if (error.code === 'messaging/registration-token-not-registered' || 
+                            error.code === 'messaging/invalid-registration-token') {
+                            invalidTokens.push(token);
+                        } else {
+                            console.error(`FCM Error for token ${token.substring(0, 10)}:`, error.message);
+                        }
+                    }
+                });
 
-                await admin.messaging().send(message);
-                console.log(`FCM Sent to ${user.email}`);
-            } else if (user.fcmToken) {
-                console.log(`[MOCK FCM] To: ${user.email} | Title: ${title} | Body: ${content}`);
+                await Promise.all(sendPromises);
+
+                // Self-Cleaning: Remove dead tokens from DB
+                if (invalidTokens.length > 0) {
+                    await User.findByIdAndUpdate(user._id, {
+                        $pull: { fcmTokens: { $in: invalidTokens } }
+                    });
+                    console.log(`Cleaned up ${invalidTokens.length} dead tokens for ${user.email}`);
+                }
+            } else if (user.fcmTokens && user.fcmTokens.length > 0) {
+                console.log(`[MOCK FCM] To: ${user.email} (on ${user.fcmTokens.length} devices) | Title: ${title} | Body: ${content}`);
             }
 
         } catch (error) {

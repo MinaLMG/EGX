@@ -148,12 +148,32 @@ exports.getMe = async (req, res) => {
 exports.updateFcmToken = async (req, res) => {
     try {
         const { fcmToken } = req.body;
-        const user = await User.findById(req.user._id);
-        if (!user) return res.status(404).json({ message: 'User not found' });
+        if (!fcmToken) return res.status(400).json({ message: 'Token is required' });
 
-        user.fcmToken = fcmToken;
-        await user.save();
+        await User.findByIdAndUpdate(req.user._id, {
+            $addToSet: { fcmTokens: fcmToken }
+        });
+
         res.json({ message: 'FCM token updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// @desc    Logout user (Revoke FCM token)
+// @route   POST /api/auth/logout
+exports.logout = async (req, res) => {
+    try {
+        const { fcmToken } = req.body;
+        
+        // If they provided a token, remove it from the DB
+        if (fcmToken) {
+            await User.findByIdAndUpdate(req.user._id, {
+                $pull: { fcmTokens: fcmToken }
+            });
+        }
+
+        res.json({ message: 'Logged out successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
 
@@ -51,6 +52,19 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        await http.post(
+          Uri.parse('$_baseUrl/logout'),
+          headers: await authHeaders(),
+          body: jsonEncode({'fcmToken': fcmToken}),
+        );
+      }
+    } catch (e) {
+      print('Error during logout FCM cleanup: $e');
+    }
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_userKey);

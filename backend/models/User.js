@@ -25,9 +25,9 @@ const UserSchema = new mongoose.Schema({
         enum: ['pending', 'active'],
         default: 'pending'
     },
-    fcmToken: {
-        type: String,
-        default: null
+    fcmTokens: {
+        type: [String],
+        default: []
     },
     lastPendingSuggestions: {
         type: [String], // Array of tickers that have active "Buy" or "Sell" suggestions

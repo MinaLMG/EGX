@@ -87,13 +87,19 @@ class NotificationService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
-    const AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-          'high_importance_channel',
-          'High Importance Notifications',
-          importance: Importance.max,
-          priority: Priority.high,
-        );
+    // To use a custom sound:
+    // 1. Download an mp3 and put it in: android/app/src/main/res/raw/alert_1.mp3
+    // 2. Uncomment the 'sound' line below and change 'alert_1' to your filename.
+
+    const AndroidNotificationDetails
+    androidDetails = AndroidNotificationDetails(
+      'egx_alerts_channel', // Change ID if you change sound (Android cache rule)
+      'EGX Portfolio Alerts',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('alert_1'),
+    );
     const NotificationDetails details = NotificationDetails(
       android: androidDetails,
     );
