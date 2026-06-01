@@ -149,6 +149,10 @@ class MubasherTradeService {
 
             let last = -1, iters = 0;
             if (viewport) {
+                console.log(`Extraction: Initial scrollTop: ${viewport.scrollTop}, scrollHeight: ${viewport.scrollHeight}`);
+                viewport.scrollTop = 0;
+                await new Promise(r => setTimeout(r, 1000));
+                
                 while (viewport.scrollTop !== last && iters < 200) {
                     last = viewport.scrollTop;
                     scan();
