@@ -34,4 +34,5 @@ jobs:
           MUBASHER_TRADE_USERNAME: ${{ secrets.MUBASHER_TRADE_USERNAME }}
           MUBASHER_TRADE_PASSWORD: ${{ secrets.MUBASHER_TRADE_PASSWORD }}
           NODE_ENV: production
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node scripts/scrapeMubasherTradePrices.js
