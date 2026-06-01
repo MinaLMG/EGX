@@ -2,6 +2,8 @@
 
 This document tracks the architectural decisions made to solve the "Real-time Market Data" challenge for the EGX platform.
 
+---
+
 ## Trial 1: Local Node-Cron
 - **Implementation:** Direct use of `node-cron` inside `app.js`.
 - **Result:** **FAILED** (Deployment phase).
