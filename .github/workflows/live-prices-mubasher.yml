@@ -31,7 +31,7 @@ jobs:
         working-directory: backend
         env:
           MONGO_URI: ${{ secrets.MONGO_URI }}
-          MUBASHER_USER: ${{ secrets.MUBASHER_USER }}
-          MUBASHER_PASS: ${{ secrets.MUBASHER_PASS }}
+          MUBASHER_TRADE_USERNAME: ${{ secrets.MUBASHER_USER }}
+          MUBASHER_TRADE_PASSWORD: ${{ secrets.MUBASHER_PASS }}
           NODE_ENV: production
         run: node scripts/scrapeMubasherTradePrices.js
