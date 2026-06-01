@@ -149,4 +149,17 @@ class AuthService {
       'message': data['message'] ?? 'Failed to update password',
     };
   }
+
+  Future<void> updateFcmToken(String? fcmToken) async {
+    if (fcmToken == null) return;
+    try {
+      await http.patch(
+        Uri.parse('$_baseUrl/fcm-token'),
+        headers: await authHeaders(),
+        body: jsonEncode({'fcmToken': fcmToken}),
+      );
+    } catch (e) {
+      print('Error updating FCM token: $e');
+    }
+  }
 }

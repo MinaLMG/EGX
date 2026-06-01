@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "950929147311",
+    "project_id": "egx-10666",
+    "storage_bucket": "egx-10666.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:950929147311:android:f9b80c9b6083c09eecdb5a",
+        "android_client_info": {
+          "package_name": "com.example.egx_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrgWK8zZO9KyfseRXfJZat6pNRsB9gLX8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

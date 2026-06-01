@@ -3,10 +3,12 @@ import 'config/app_config.dart';
 import 'services/auth_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppConfig.load();
+  await NotificationService().init();
   runApp(EGXApp());
 }
 

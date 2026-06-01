@@ -74,6 +74,13 @@ class ScoringService {
                 await Stock.bulkWrite(bulkOps);
             }
 
+            // Trigger wallet rebalancing notifications check
+            // We run this asynchronously so it doesn't block the API response
+            const notificationService = require('./notificationService');
+            notificationService.checkAllWalletsAndNotify().catch(err => {
+                console.error('Error in post-scoring notification check:', err);
+            });
+
             console.log(`Recalculation complete for ${stocks.length} stocks.`);
             return { success: true, count: stocks.length };
         } catch (error) {
