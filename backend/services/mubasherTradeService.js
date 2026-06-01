@@ -33,7 +33,7 @@ class MubasherTradeService {
                 const chromium = (await import('@sparticuz/chromium')).default;
                 const { default: p } = await import('puppeteer-core');
                 puppeteer = p;
-                
+
                 launchOptions.executablePath = await chromium.executablePath();
                 launchOptions.args = [...chromium.args, ...launchOptions.args];
             } else {
@@ -45,15 +45,15 @@ class MubasherTradeService {
 
             this.browser = await puppeteer.launch(launchOptions);
             this.page = await this.browser.newPage();
-            
+
             this.page.on('console', msg => {
                 const txt = msg.text();
                 if (txt.includes('Extraction') || txt.includes('Items:')) console.log('Mubasher:', txt);
             });
-            
+
             await this.page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
             await this.page.setViewport({ width: 1440, height: 900 });
-            
+
         } catch (err) {
             this.isMonitoring = false;
             console.error('Mubasher: Browser initialization failed.');
@@ -66,6 +66,12 @@ class MubasherTradeService {
     async login() {
         const username = process.env.MUBASHER_TRADE_USERNAME;
         const password = process.env.MUBASHER_TRADE_PASSWORD;
+
+        if (!username || !password) {
+            console.error('Mubasher: MISSING CREDENTIALS! Please set MUBASHER_TRADE_USERNAME and MUBASHER_TRADE_PASSWORD.');
+            return;
+        }
+
         console.log('Logging in to Mubasher Trade...');
         await this.page.goto('https://rubixegypt.mubashertrade.com/web/login', {
             waitUntil: 'domcontentloaded',
@@ -194,7 +200,7 @@ class MubasherTradeService {
 
             const url = await this.page.url();
             if (url.includes('/login') || !url.includes('/secure/')) await this.login();
-            
+
             return await this.performUpdateCycle();
         } catch (e) {
             console.error('Mubasher Trade Service Error:', e.message);
