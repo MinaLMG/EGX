@@ -26,8 +26,8 @@ const ConfigHelper = require('../utils/configHelper');
 const TIMEZONE_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3
 
 // Market close: 14:30 local (UTC+3)  →  11:30 UTC
-const CLOSE_HOUR_UTC = 11;
-const CLOSE_MINUTE_UTC = 30;
+const CLOSE_HOUR_UTC = 23;
+const CLOSE_MINUTE_UTC = 59;
 
 // Delay between scrape cycles (ms). Mubasher itself takes ~3-5 min per run.
 const INTERVAL_MS = 45 * 1000; // 45 seconds waiting between attempts
