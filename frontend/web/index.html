@@ -18,19 +18,36 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="EGX Portfolio Intelligence">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="egx_mobile">
+  <meta name="apple-mobile-web-app-title" content="EGX">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>egx_mobile</title>
+  <title>EGX Portfolio</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Firebase Web SDK (for web FCM) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+  <script>
+    // Initialize Firebase for web
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2FSZ2TzCDdA1F1yjC53EaXgZxY-Ze5uo",
+      authDomain: "egx-10666.firebaseapp.com",
+      projectId: "egx-10666",
+      storageBucket: "egx-10666.firebasestorage.app",
+      messagingSenderId: "950929147311",
+      appId: "1:950929147311:web:4da686399c527c62ecdb5a",
+      measurementId: "G-5MBCJ61BP3"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
 
@@ -31,6 +32,9 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (result['success']) {
+        // Update notification token now that we are authenticated
+        NotificationService().updateToken();
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => HomeScreen()),

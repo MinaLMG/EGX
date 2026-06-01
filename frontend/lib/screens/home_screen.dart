@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/notification_api_service.dart';
 import '../models/user.dart';
 import 'stock_list_screen.dart';
 import 'match_wizard_screen.dart';
@@ -7,6 +8,7 @@ import 'recommendations_screen.dart';
 import 'wallet_screen.dart';
 import 'login_screen.dart';
 import 'admin_users_screen.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -15,17 +17,34 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AuthService _authService = AuthService();
+  final NotificationApiService _notifService = NotificationApiService();
   User? _user;
+  int _unreadCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUser();
+    _loadUnreadCount();
   }
 
   Future<void> _loadUser() async {
     final user = await _authService.getUser();
     setState(() => _user = user);
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final count = await _notifService.getUnreadCount();
+    setState(() => _unreadCount = count);
+  }
+
+  void _openNotifications() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => NotificationsScreen()),
+    );
+    // Refresh count after returning (they were marked seen)
+    _loadUnreadCount();
   }
 
   Future<void> _logout() async {
@@ -111,6 +130,34 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.deepPurple,
         elevation: 0,
         actions: [
+          // Bell icon with unread badge
+          IconButton(
+            onPressed: _openNotifications,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined, color: Colors.white, size: 26),
+                if (_unreadCount > 0)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        _unreadCount > 9 ? '9+' : '$_unreadCount',
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           if (_user != null)
             PopupMenuButton<String>(
               onSelected: (value) {

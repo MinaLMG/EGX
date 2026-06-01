@@ -9,6 +9,7 @@ class AuthService {
   static const String _userKey = 'auth_user';
 
   String get _baseUrl => '${AppConfig.apiBaseUrl}/api/auth';
+  String get baseUrl => '${AppConfig.apiBaseUrl}/api';
 
   static String? _cachedToken;
   static User? _cachedUser;

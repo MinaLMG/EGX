@@ -30,6 +30,7 @@ app.use('/api/mubasher', protect, authorize('admin'), require('./routes/mubasher
 app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/cron', require('./routes/cronRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Health Check
 app.get('/', (req, res) => {

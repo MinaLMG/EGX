@@ -39,45 +39,53 @@ class NotificationService {
     async checkAllWalletsAndNotify() {
         console.log('Notification Check: Starting wallet analysis for all users...');
         const users = await User.find({ status: 'active' });
-        
+
         let totalSent = 0;
 
         for (const user of users) {
             try {
                 // 1. Calculate current metrics/suggestions
                 const result = await walletService.calculateWalletMetrics(user._id);
-                
                 // 2. Identify active suggestions (Buy/Sell)
                 const currentSuggestions = (result.analysis || [])
                     .filter(a => a.suggestion === 'Buy' || a.suggestion === 'Sell')
                     .map(a => `${a.ticker}:${a.suggestion}`)
                     .sort();
-
                 // 3. Compare with last stored suggestions
                 const lastSuggestions = (user.lastPendingSuggestions || []).sort();
-                
-                const hasChanged = JSON.stringify(currentSuggestions) !== JSON.stringify(lastSuggestions);
 
+                const hasChanged = JSON.stringify(currentSuggestions) !== JSON.stringify(lastSuggestions);
                 if (hasChanged && currentSuggestions.length > 0) {
-                    // Something new appeared or changed
-                    const buyCount = (result.analysis || []).filter(a => a.suggestion === 'Buy').length;
-                    
-                    const title = 'Wallet Rebalancing Alert';
-                    const content = buyCount > 0 
-                        ? `You have ${buyCount} suggested buys. Time for a new top up!`
-                        : `Your portfolio needs adjustments. Check your pending transactions.`;
+                    // Build Arabic content listing each action
+                    const buyTickers = (result.analysis || [])
+                        .filter(a => a.suggestion === 'Buy')
+                        .map(a => a.ticker);
+                    const sellTickers = (result.analysis || [])
+                        .filter(a => a.suggestion === 'Sell')
+                        .map(a => a.ticker);
+
+                    const lines = [];
+                    if (buyTickers.length > 0)
+                        lines.push(`امر زيادة مراكز على: ${buyTickers.join(', ')}`);
+                    if (sellTickers.length > 0)
+                        lines.push(`امر جني ارباح على: ${sellTickers.join(', ')}`);
+
+                    const title = '🔔 البورصة فيها اكشن!';
+                    const content = lines.join(' | ');
 
                     await this.sendNotification(user, title, content, 'wallet_update');
-                    
-                    // 4. Update user record to prevent duplicate alerts
-                    user.lastPendingSuggestions = currentSuggestions;
-                    await user.save();
-                    
+
+                    // 4. Update user record atomically to prevent version conflicts
+                    await User.findByIdAndUpdate(user._id, {
+                        lastPendingSuggestions: currentSuggestions
+                    });
+
                     totalSent++;
                 } else if (hasChanged && currentSuggestions.length === 0) {
                     // Suggestions cleared (user took action)
-                    user.lastPendingSuggestions = [];
-                    await user.save();
+                    await User.findByIdAndUpdate(user._id, {
+                        lastPendingSuggestions: []
+                    });
                 }
 
             } catch (err) {
