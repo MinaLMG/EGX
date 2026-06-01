@@ -57,41 +57,39 @@ class NotificationService {
                 const hasChanged = JSON.stringify(currentSuggestions) !== JSON.stringify(lastSuggestions);
 
                 if (hasChanged) {
-                    console.log(`[Notification Debug] User: ${user.email}`);
-                    console.log(`[Notification Debug] Current: ${JSON.stringify(currentSuggestions)}`);
-                    console.log(`[Notification Debug] Last: ${JSON.stringify(lastSuggestions)}`);
-                }
+                    const currentTickers = currentSuggestions.map(s => s.split(':')[0]);
+                    const lastTickers = lastSuggestions.map(s => s.split(':')[0]);
+                    const isNewTickerAdded = currentTickers.some(t => !lastTickers.includes(t));
 
-                if (hasChanged && currentSuggestions.length > 0) {
-                    // Build Arabic content listing each action
-                    const buyTickers = (result.analysis || [])
-                        .filter(a => a.suggestion === 'Buy')
-                        .map(a => a.ticker);
-                    const sellTickers = (result.analysis || [])
-                        .filter(a => a.suggestion === 'Sell')
-                        .map(a => a.ticker);
+                    console.log(`[Notification Debug] User: ${user.email} | Change: ${hasChanged} | New Ticker: ${isNewTickerAdded}`);
+                    
+                    if (isNewTickerAdded && currentSuggestions.length > 0) {
+                        // Build Arabic content listing each action
+                        const buyTickers = (result.analysis || [])
+                            .filter(a => a.suggestion === 'Buy')
+                            .map(a => a.ticker);
+                        const sellTickers = (result.analysis || [])
+                            .filter(a => a.suggestion === 'Sell')
+                            .map(a => a.ticker);
 
-                    const lines = [];
-                    if (buyTickers.length > 0)
-                        lines.push(`امر زيادة مراكز على: ${buyTickers.join(', ')}`);
-                    if (sellTickers.length > 0)
-                        lines.push(`امر جني ارباح على: ${sellTickers.join(', ')}`);
+                        const lines = [];
+                        if (buyTickers.length > 0)
+                            lines.push(`امر زيادة مراكز على: ${buyTickers.join(', ')}`);
+                        if (sellTickers.length > 0)
+                            lines.push(`امر جني ارباح على: ${sellTickers.join(', ')}`);
 
-                    const title = '🔔 البورصة فيها اكشن!';
-                    const content = lines.join(' | ');
+                        const title = '🔔 البورصة فيها اكشن!';
+                        const content = lines.join(' | ');
 
-                    await this.sendNotification(user, title, content, 'wallet_update');
+                        await this.sendNotification(user, title, content, 'wallet_update');
+                        totalSent++;
+                    }
 
                     // 4. Update user record atomically to prevent version conflicts
+                    // Always update DB if anything changed (even removals or action changes)
+                    // so that the state stays fresh for the next "isNewTickerAdded" check.
                     await User.findByIdAndUpdate(user._id, {
                         lastPendingSuggestions: currentSuggestions
-                    });
-
-                    totalSent++;
-                } else if (hasChanged && currentSuggestions.length === 0) {
-                    // Suggestions cleared (user took action)
-                    await User.findByIdAndUpdate(user._id, {
-                        lastPendingSuggestions: []
                     });
                 }
 

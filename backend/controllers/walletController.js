@@ -1,4 +1,6 @@
 const walletService = require('../services/walletService');
+const Wallet = require('../models/Wallet');
+const Stock = require('../models/Stock');
 
 // Helper to calculate wallet metrics (used by user and admin)
 const _calcWalletInternal = async (userId) => {
