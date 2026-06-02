@@ -52,7 +52,7 @@ class NotificationService {
 
       // Create the High Importance channel for "Heads-up" (Pop-ups)
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'egx_alerts_channel', // Must match the ID used in backend & _showLocalNotification
+        'egx_alerts_channel_v2', // Must match the ID used in backend & _showLocalNotification
         'EGX Portfolio Alerts',
         description: 'Important rebalancing alerts and price updates.',
         importance: Importance.max,
@@ -108,7 +108,7 @@ class NotificationService {
 
     const AndroidNotificationDetails
     androidDetails = AndroidNotificationDetails(
-      'egx_alerts_channel', // Change ID if you change sound (Android cache rule)
+      'egx_alerts_channel_v2', // Change ID if you change sound (Android cache rule)
       'EGX Portfolio Alerts',
       importance: Importance.max,
       priority: Priority.high,

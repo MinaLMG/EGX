@@ -130,14 +130,14 @@ class NotificationService {
                             notification: { title, body: content },
                             token: token,
                             // Support "Heads-up" (Pop-up) notifications
-                            android: {
-                                priority: 'high',
-                                notification: {
-                                    channelId: 'egx_alerts_channel', // Matches egx_alerts_channel in Flutter
+                                android: {
                                     priority: 'high',
-                                    sound: 'alert_1' // Matches alert_1.mp3 in Android raw resources
-                                }
-                            },
+                                    notification: {
+                                        channelId: 'egx_alerts_channel_v2', // Matches egx_alerts_channel_v2 in Flutter
+                                        priority: 'high',
+                                        sound: 'alert_1' // Matches alert_1.mp3 in Android raw resources
+                                    }
+                                },
                             apns: {
                                 payload: {
                                     aps: {
