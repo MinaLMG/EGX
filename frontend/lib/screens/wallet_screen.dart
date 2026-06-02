@@ -364,7 +364,9 @@ class _WalletScreenState extends State<WalletScreen> {
     final userNameFromData = _walletData?['wallet']?['user']?['name'];
     final title = widget.targetUserName != null
         ? 'Simulating: ${widget.targetUserName}'
-        : (userNameFromData != null ? "$userNameFromData's Wallet" : 'My Wallet');
+        : (userNameFromData != null
+              ? "$userNameFromData's Wallet"
+              : 'My Wallet');
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -558,9 +560,8 @@ class _WalletScreenState extends State<WalletScreen> {
               final currentPrice = item['currentPrice'] as num;
               final isSellingSide =
                   item['realMarketValue'] > item['supposedValue'];
-              final targetPrice = (isSellingSide
-                      ? item['sellTarget']
-                      : item['buyTarget']) ??
+              final targetPrice =
+                  (isSellingSide ? item['sellTarget'] : item['buyTarget']) ??
                   0.0;
               final tradeValue = (item['gap'] as num).abs();
 
@@ -602,6 +603,27 @@ class _WalletScreenState extends State<WalletScreen> {
                       _predictRow(
                         'Expected Trade Value',
                         'EGP ${tradeValue.toStringAsFixed(0)}',
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            'Balanced Trade Value',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isSellingSide ? Colors.red : Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Tooltip(
+                            message: '${item['predictShares']} shares',
+                            child: Icon(
+                              Icons.help_outline,
+                              size: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 8),
                       LinearProgressIndicator(
@@ -1241,24 +1263,6 @@ class _WalletScreenState extends State<WalletScreen> {
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Column(
             children: [
-              DropdownButtonFormField<String>(
-                value: _mode,
-                decoration: InputDecoration(
-                  labelText: 'Calculation Mode',
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  DropdownMenuItem(
-                    value: 'automatic',
-                    child: Text('Automatic (Market Prices)'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'manual',
-                    child: Text('Manual (Custom Prices)'),
-                  ),
-                ],
-                onChanged: (val) => setState(() => _mode = val!),
-              ),
               SizedBox(height: 12),
               SizedBox(height: 12),
               /* Manual Total Override removed from portfolio - functionality moved to profit context only */
@@ -1417,7 +1421,6 @@ class _WalletScreenState extends State<WalletScreen> {
           itemBuilder: (context, index) {
             final item = filteredItems[index];
             final suggestion = item['suggestion'] ?? 'Hold';
-            final gap = (item['gap'] as num?) ?? 0;
             final deviation =
                 ((item['realMarketValue'] - item['supposedValue']) /
                     item['supposedValue']) *
@@ -1491,27 +1494,45 @@ class _WalletScreenState extends State<WalletScreen> {
                   ],
                 ),
                 trailing: SizedBox(
-                  width: 60,
+                  width: 70,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         _suggestionIcon(suggestion),
                         color: _suggestionColor(suggestion),
-                        size: 20,
+                        size: 18,
                       ),
                       Text(
                         suggestion,
                         style: TextStyle(
                           color: _suggestionColor(suggestion),
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 9,
                         ),
                       ),
-                      Text(
-                        'EGP ${gap.toStringAsFixed(0)}',
-                        style: TextStyle(fontSize: 9, color: Colors.black54),
+                      SizedBox(height: 2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'EGP ${(item['gap'] as num).toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 2),
+                          Tooltip(
+                            message: '${item['gapShares']} shares',
+                            child: Icon(
+                              Icons.help_outline,
+                              size: 10,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

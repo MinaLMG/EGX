@@ -228,29 +228,4 @@ exports.deletePointOnTime = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-// @desc    Update manual prices in bulk
-// @route   PUT /api/wallet/manual-prices
-exports.updateManualPricesBulk = async (req, res) => {
-    try {
-        const { prices, userId } = req.body; // prices is { ticker: price }
-        const targetId = (req.user.role === 'admin' && userId) ? userId : req.user._id;
 
-        const wallet = await Wallet.findOne({ user: targetId }).populate('items.stock');
-        if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
-
-        if (prices && typeof prices === 'object') {
-            Object.keys(prices).forEach(ticker => {
-                const item = wallet.items.find(i => i.stock.ticker === ticker);
-                if (item) {
-                    item.manualPrice = prices[ticker];
-                }
-            });
-            await wallet.save();
-        }
-
-        const data = await _calcWalletInternal(targetId);
-        res.json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};

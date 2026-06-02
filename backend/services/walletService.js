@@ -19,9 +19,7 @@ class WalletService {
     calculateTotalValue(wallet) {
         let totalVal = wallet.cash;
         wallet.items.forEach(item => {
-            const price = (wallet.mode === 'manual' && item.manualPrice)
-                ? item.manualPrice
-                : (item.stock.price || 0);
+            const price = item.stock.price || 0;
             totalVal += (item.quantity * price);
         });
         return totalVal;
@@ -56,10 +54,7 @@ class WalletService {
             let previousSupposed = null;
             for (let i = 0; i < sortedItems.length; i++) {
                 const item = sortedItems[i];
-                const currentPrice = (wallet.mode === 'manual' && item.manualPrice)
-                    ? item.manualPrice
-                    : (item.stock.price || 0);
-
+                const currentPrice = item.stock.price || 0;
                 const realMarketValue = item.quantity * currentPrice;
 
                 let supposedValue;
@@ -73,6 +68,8 @@ class WalletService {
                 const gap = supposedValue - realMarketValue;
                 let suggestion = 'Hold';
                 const threshold = wallet.rebalancingThreshold || 0.10;
+                const margin = 0.01;
+
                 if (realMarketValue > 0) {
                     const deviation = Math.abs(gap) / supposedValue;
                     if (deviation >= threshold) suggestion = gap > 0 ? 'Buy' : 'Sell';
@@ -80,10 +77,19 @@ class WalletService {
                     suggestion = 'Buy';
                 }
 
+
                 const fairPrice = item.quantity > 0 ? (supposedValue / item.quantity) : 0;
-                const margin = 0.01;
                 const buyTarget = fairPrice * (1 - threshold - margin);
                 const sellTarget = fairPrice * (1 + threshold + margin);
+
+                // Portfolio Shares: Represents the raw GAP (Distance to perfect balance)
+                const gapShares = currentPrice > 0 ? (Math.abs(gap) / currentPrice) : 0;
+
+                // Next Action Shares: Fixed trade amount at the Trigger Price
+                const tradeValue = (threshold + margin) * supposedValue;
+                const triggerPrice = gap > 0 ? buyTarget : sellTarget;
+                const predictShares = triggerPrice > 0 ? (tradeValue / triggerPrice) : 0;
+
 
                 analysis.push({
                     ticker: item.stock.ticker,
@@ -97,6 +103,9 @@ class WalletService {
                     buyTarget,
                     sellTarget,
                     gap,
+                    gapShares: Math.round(gapShares),
+                    tradeValue,
+                    predictShares: Math.round(predictShares),
                     suggestion
                 });
             }
@@ -186,7 +195,7 @@ class WalletService {
             snapshotDate.setHours(23, 59, 59, 999);
             const snapDuration = Math.ceil((now - snapshotDate) / (1000 * 60 * 60 * 24));
             let bankSupposedRevenue = activeSnapshot.balance * (Math.pow(bankDailyRatio, Math.max(0, snapDuration)) - 1);
-            
+
             (wallet.transactions || []).forEach(t => {
                 const tDate = new Date(t.date);
                 if (tDate <= snapshotDate) return;
@@ -233,7 +242,7 @@ class WalletService {
     async calculateWalletMetrics(userId) {
         const wallet = await this.getPopulatedWallet(userId);
         const totalValue = this.calculateTotalValue(wallet);
-        
+
         const { analysis, diffValue } = this.calculateRebalancing(wallet, totalValue);
         const profitMetrics = this.calculateProfitMetrics(wallet, totalValue);
 

@@ -128,7 +128,28 @@ class NotificationService {
                     try {
                         const message = {
                             notification: { title, body: content },
-                            token: token
+                            token: token,
+                            // Support "Heads-up" (Pop-up) notifications
+                            android: {
+                                priority: 'high',
+                                notification: {
+                                    channelId: 'egx_alerts_channel', // Matches egx_alerts_channel in Flutter
+                                    priority: 'high',
+                                    sound: 'alert_1' // Matches alert_1.mp3 in Android raw resources
+                                }
+                            },
+                            apns: {
+                                payload: {
+                                    aps: {
+                                        sound: 'alert_1.caf',
+                                        badge: 1,
+                                        'content-available': 1,
+                                    }
+                                },
+                                headers: {
+                                    'apns-priority': '10', // 10 is immediate/high priority
+                                }
+                            }
                         };
                         await admin.messaging().send(message);
                         console.log(`FCM Sent to ${user.email} on device ${token.substring(0, 10)}...`);

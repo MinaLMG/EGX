@@ -23,13 +23,17 @@ exports.updateBfPrices = async (req, res) => {
         // 1. Clear existing
         await BFValue.deleteMany({});
 
-        // 2. Resolve tickers to stock IDs
+        // 2. Resolve tickers to stock IDs (Bulk approach)
+        const tickers = bfValues.map(v => v.ticker.toUpperCase());
+        const stocks = await Stock.find({ ticker: { $in: tickers } });
+        const stockMap = new Map(stocks.map(s => [s.ticker.toUpperCase(), s._id]));
+
         const updates = [];
         for (const item of bfValues) {
-            const stock = await Stock.findOne({ ticker: item.ticker.toUpperCase() });
-            if (stock) {
+            const stockId = stockMap.get(item.ticker.toUpperCase());
+            if (stockId) {
                 updates.push({
-                    stock: stock._id,
+                    stock: stockId,
                     value: item.value
                 });
             }
@@ -167,12 +171,16 @@ exports.updateRFP = async (req, res) => {
 
         await RFPRecommendation.deleteMany({});
 
+        const tickers = stocks.map(s => s.ticker.toUpperCase());
+        const stockList = await Stock.find({ ticker: { $in: tickers } });
+        const stockMap = new Map(stockList.map(s => [s.ticker.toUpperCase(), s._id]));
+
         const updates = [];
         for (const item of stocks) {
-            const stock = await Stock.findOne({ ticker: item.ticker.toUpperCase() });
-            if (stock) {
+            const stockId = stockMap.get(item.ticker.toUpperCase());
+            if (stockId) {
                 updates.push({
-                    stock: stock._id,
+                    stock: stockId,
                     score: item.score || 1
                 });
             }
@@ -199,12 +207,16 @@ exports.updateRSP = async (req, res) => {
 
         await RSPRecommendation.deleteMany({});
 
+        const tickers = stocks.map(s => s.ticker.toUpperCase());
+        const stockList = await Stock.find({ ticker: { $in: tickers } });
+        const stockMap = new Map(stockList.map(s => [s.ticker.toUpperCase(), s._id]));
+
         const updates = [];
         for (const item of stocks) {
-            const stock = await Stock.findOne({ ticker: item.ticker.toUpperCase() });
-            if (stock) {
+            const stockId = stockMap.get(item.ticker.toUpperCase());
+            if (stockId) {
                 updates.push({
-                    stock: stock._id,
+                    stock: stockId,
                     score: item.score
                 });
             }

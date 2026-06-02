@@ -49,6 +49,21 @@ class NotificationService {
         android: androidSettings,
       );
       await _localNotifications.initialize(initSettings);
+
+      // Create the High Importance channel for "Heads-up" (Pop-ups)
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'egx_alerts_channel', // Must match the ID used in backend & _showLocalNotification
+        'EGX Portfolio Alerts',
+        description: 'Important rebalancing alerts and price updates.',
+        importance: Importance.max,
+        playSound: true,
+        sound: RawResourceAndroidNotificationSound('alert_1'),
+      );
+
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
     }
 
     // 4. Foreground message handler

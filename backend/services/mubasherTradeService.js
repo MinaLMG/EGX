@@ -208,6 +208,10 @@ class MubasherTradeService {
             return await this.performUpdateCycle();
         } catch (e) {
             console.error('Mubasher Trade Service Error:', e.message);
+            // Clean up to ensure next run starts fresh
+            if (this.browser) this.browser.close().catch(() => {});
+            this.browser = null;
+            this.page = null;
             throw e;
         } finally {
             this.isMonitoring = false;
