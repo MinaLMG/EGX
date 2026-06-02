@@ -127,17 +127,19 @@ class NotificationService {
                 const sendPromises = user.fcmTokens.map(async (token) => {
                     try {
                         const message = {
-                            notification: { title, body: content },
                             token: token,
-                            // Support "Heads-up" (Pop-up) notifications
-                                android: {
+                            notification: {
+                                title: title,
+                                body: content,
+                            },
+                            android: {
+                                priority: 'high',
+                                notification: {
+                                    channelId: 'egx_alerts_channel_v2',
+                                    sound: 'alert_1',
                                     priority: 'high',
-                                    notification: {
-                                        channelId: 'egx_alerts_channel_v2', // Matches egx_alerts_channel_v2 in Flutter
-                                        priority: 'high',
-                                        sound: 'alert_1' // Matches alert_1.mp3 in Android raw resources
-                                    }
-                                },
+                                }
+                            },
                             apns: {
                                 payload: {
                                     aps: {
@@ -145,10 +147,16 @@ class NotificationService {
                                         badge: 1,
                                         'content-available': 1,
                                     }
-                                },
-                                headers: {
-                                    'apns-priority': '10', // 10 is immediate/high priority
                                 }
+                            },
+                            webpush: {
+                                notification: {
+                                    title: title,
+                                    body: content,
+                                    icon: '/icons/Icon-192.png',
+                                    badge: '/icons/Icon-192.png',
+                                    dir: 'rtl',
+                                },
                             }
                         };
                         await admin.messaging().send(message);
