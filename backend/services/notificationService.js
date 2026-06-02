@@ -35,6 +35,7 @@ class NotificationService {
 
     /**
      * Checks all users' wallets for rebalancing suggestions and sends notifications if they changed.
+     * Optimized to only calculate rebalancing metrics, skipping heavy profit/history math.
      */
     async checkAllWalletsAndNotify() {
         console.log('Notification Check: Starting wallet analysis for all users...');
@@ -44,16 +45,21 @@ class NotificationService {
 
         for (const user of users) {
             try {
-                // 1. Calculate current metrics/suggestions
-                const result = await walletService.calculateWalletMetrics(user._id);
+                // 1. Fetch wallet and calculate only totalValue + rebalancing (Lightweight)
+                const wallet = await walletService.getPopulatedWallet(user._id);
+                if (!wallet.items || wallet.items.length === 0) continue; // Skip empty wallets
+
+                const totalValue = walletService.calculateTotalValue(wallet);
+                const { analysis } = walletService.calculateRebalancing(wallet, totalValue);
+
                 // 2. Identify active suggestions (Buy/Sell)
-                const currentSuggestions = (result.analysis || [])
+                const currentSuggestions = (analysis || [])
                     .filter(a => a.suggestion === 'Buy' || a.suggestion === 'Sell')
                     .map(a => `${a.ticker}:${a.suggestion}`)
                     .sort();
+                
                 // 3. Compare with last stored suggestions
                 const lastSuggestions = (user.lastPendingSuggestions || []).sort();
-
                 const hasChanged = JSON.stringify(currentSuggestions) !== JSON.stringify(lastSuggestions);
 
                 if (hasChanged) {
@@ -65,10 +71,10 @@ class NotificationService {
                     
                     if (isNewTickerAdded && currentSuggestions.length > 0) {
                         // Build Arabic content listing each action
-                        const buyTickers = (result.analysis || [])
+                        const buyTickers = (analysis || [])
                             .filter(a => a.suggestion === 'Buy')
                             .map(a => a.ticker);
-                        const sellTickers = (result.analysis || [])
+                        const sellTickers = (analysis || [])
                             .filter(a => a.suggestion === 'Sell')
                             .map(a => a.ticker);
 
@@ -85,9 +91,7 @@ class NotificationService {
                         totalSent++;
                     }
 
-                    // 4. Update user record atomically to prevent version conflicts
-                    // Always update DB if anything changed (even removals or action changes)
-                    // so that the state stays fresh for the next "isNewTickerAdded" check.
+                    // 4. Update user record atomically
                     await User.findByIdAndUpdate(user._id, {
                         lastPendingSuggestions: currentSuggestions
                     });

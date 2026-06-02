@@ -6,6 +6,7 @@ const checkAuth = (req) => {
     const authHeader = req.headers['authorization'];
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) return false;
+    if (!cronSecret) return false;
     return true;
 };
 
@@ -16,7 +17,7 @@ exports.triggerMubasherPrices = async (req, res) => {
     if (!checkAuth(req)) return res.status(401).json({ message: 'Unauthorized' });
 
     console.log('[Trigger] Waking up Mubasher Live Price Scraper...');
-    
+
     const GITHUB_PAT = process.env.GITHUB_PAT;
     const REPO_OWNER = 'MinaLMG';
     const REPO_NAME = 'EGX';
@@ -41,8 +42,8 @@ exports.triggerMubasherPrices = async (req, res) => {
         res.json({ status: 'success', message: 'Mubasher Prices triggered successfully', code: response.status });
     } catch (error) {
         console.error('[Trigger] GitHub API Error (Mubasher):', error.response?.data || error.message);
-        res.status(500).json({ 
-            status: 'error', 
+        res.status(500).json({
+            status: 'error',
             message: 'Failed to trigger Mubasher GitHub',
             details: error.response?.data || error.message
         });
@@ -56,7 +57,7 @@ exports.triggerArabicStockValues = async (req, res) => {
     if (!checkAuth(req)) return res.status(401).json({ message: 'Unauthorized' });
 
     console.log('[Trigger] Waking up ArabicStock Fair Value Scraper...');
-    
+
     const GITHUB_PAT = process.env.GITHUB_PAT;
     const REPO_OWNER = 'MinaLMG';
     const REPO_NAME = 'EGX';
@@ -81,8 +82,8 @@ exports.triggerArabicStockValues = async (req, res) => {
         res.json({ status: 'success', message: 'ArabicStock Values triggered successfully', code: response.status });
     } catch (error) {
         console.error('[Trigger] GitHub API Error (ArabicStock):', error.response?.data || error.message);
-        res.status(500).json({ 
-            status: 'error', 
+        res.status(500).json({
+            status: 'error',
             message: 'Failed to trigger ArabicStock GitHub',
             details: error.response?.data || error.message
         });

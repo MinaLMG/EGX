@@ -77,7 +77,7 @@ class ScoringService {
             // Trigger wallet rebalancing notifications check
             // We run this asynchronously so it doesn't block the API response
             const notificationService = require('./notificationService');
-            notificationService.checkAllWalletsAndNotify().catch(err => {
+            await notificationService.checkAllWalletsAndNotify().catch(err => {
                 console.error('Error in post-scoring notification check:', err);
             });
 

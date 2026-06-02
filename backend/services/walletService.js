@@ -3,26 +3,36 @@ const Stock = require('../models/Stock');
 
 class WalletService {
     /**
-     * Internal logic for calculating wallet metrics.
-     * Can be called for a single user or iterated over multiple.
+     * Gets the populated wallet for a user.
      */
-    async calculateWalletMetrics(userId) {
+    async getPopulatedWallet(userId) {
         let wallet = await Wallet.findOne({ user: userId }).populate('items.stock').populate('user', 'name');
         if (!wallet) {
             wallet = await Wallet.create({ user: userId, items: [], transactions: [] });
         }
+        return wallet;
+    }
 
-        const itemsCount = wallet.items.length;
+    /**
+     * Calculates the current total value of the wallet.
+     */
+    calculateTotalValue(wallet) {
         let totalVal = wallet.cash;
-
         wallet.items.forEach(item => {
             const price = (wallet.mode === 'manual' && item.manualPrice)
                 ? item.manualPrice
                 : (item.stock.price || 0);
             totalVal += (item.quantity * price);
         });
+        return totalVal;
+    }
 
-        // 2. Rebalancing Analysis
+    /**
+     * Performs rebalancing analysis and generates Buy/Sell suggestions.
+     * This is the lightweight version used for notifications.
+     */
+    calculateRebalancing(wallet, totalVal) {
+        const itemsCount = wallet.items.length;
         const sortedItems = [...wallet.items].sort((a, b) => {
             const scoreA = a.stock.total_score || 0;
             const scoreB = b.stock.total_score || 0;
@@ -92,7 +102,14 @@ class WalletService {
             }
         }
 
-        // 3. Profit Calculator Logic
+        return { analysis, diffValue };
+    }
+
+    /**
+     * Calculates profit metrics, revenue, and bank comparison.
+     * This is the heavy version used for the main wallet dashboard.
+     */
+    calculateProfitMetrics(wallet, totalVal) {
         const now = new Date();
         let totalEffectiveValue = 0;
         let totalNetInvestment = 0;
@@ -191,26 +208,51 @@ class WalletService {
         }
 
         return {
-            wallet,
-            totalValue: totalVal,
+            totalNetInvestment,
+            walletEffectiveValue,
             currentValueForProfit,
+            revenue,
+            revenuePercentage,
+            dailyRatio,
+            yearlyRevenue,
+            totalDuration,
+            bankComparison,
             activeSnapshot: activeSnapshot ? {
                 _id: activeSnapshot._id,
                 date: activeSnapshot.date,
                 balance: activeSnapshot.balance,
                 bankRatio: activeSnapshot.bankRatio || 0
-            } : null,
+            } : null
+        };
+    }
+
+    /**
+     * Orchestrates the calculation of all wallet metrics.
+     * Used by the API to provide a complete wallet state.
+     */
+    async calculateWalletMetrics(userId) {
+        const wallet = await this.getPopulatedWallet(userId);
+        const totalValue = this.calculateTotalValue(wallet);
+        
+        const { analysis, diffValue } = this.calculateRebalancing(wallet, totalValue);
+        const profitMetrics = this.calculateProfitMetrics(wallet, totalValue);
+
+        return {
+            wallet,
+            totalValue,
+            currentValueForProfit: profitMetrics.currentValueForProfit,
+            activeSnapshot: profitMetrics.activeSnapshot,
             diffValue,
             analysis,
-            bankComparison,
+            bankComparison: profitMetrics.bankComparison,
             profit: {
-                totalNetInvestment,
-                walletEffectiveValue,
-                revenue,
-                revenuePercentage,
-                dailyRatio,
-                yearlyRevenue,
-                totalDuration
+                totalNetInvestment: profitMetrics.totalNetInvestment,
+                walletEffectiveValue: profitMetrics.walletEffectiveValue,
+                revenue: profitMetrics.revenue,
+                revenuePercentage: profitMetrics.revenuePercentage,
+                dailyRatio: profitMetrics.dailyRatio,
+                yearlyRevenue: profitMetrics.yearlyRevenue,
+                totalDuration: profitMetrics.totalDuration
             }
         };
     }
