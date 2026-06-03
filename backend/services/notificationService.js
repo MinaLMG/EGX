@@ -137,7 +137,6 @@ class NotificationService {
                                 notification: {
                                     channelId: 'egx_alerts_channel_v2',
                                     sound: 'alert_1',
-                                    priority: 'high',
                                 }
                             },
                             apns: {
@@ -145,18 +144,21 @@ class NotificationService {
                                     aps: {
                                         sound: 'alert_1.caf',
                                         badge: 1,
-                                        'content-available': 1,
                                     }
                                 }
                             },
                             webpush: {
+                                headers: {
+                                    Urgency: 'high'
+                                },
                                 notification: {
-                                    title: title,
                                     body: content,
                                     icon: '/icons/Icon-192.png',
-                                    badge: '/icons/Icon-192.png',
-                                    dir: 'rtl',
+                                    badge: '/icons/Icon-192.png'
                                 },
+                                fcm_options: {
+                                    link: '/'
+                                }
                             }
                         };
                         await admin.messaging().send(message);
