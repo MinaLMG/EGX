@@ -178,3 +178,19 @@ exports.logout = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// @desc    Accept educating hint and increment rank
+// @route   POST /api/auth/accept-hint
+exports.acceptHint = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (user.rank < 3) {
+            user.rank += 1;
+        }
+        user.lastHintDate = new Date();
+        await user.save();
+        res.json({ message: 'Hint accepted', rank: user.rank, lastHintDate: user.lastHintDate });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

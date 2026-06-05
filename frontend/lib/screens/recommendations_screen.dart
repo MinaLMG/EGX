@@ -287,9 +287,27 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
   final _tickerController = TextEditingController();
   final _targetController = TextEditingController();
   final _notesController = TextEditingController();
+  final _searchController = TextEditingController();
   Stock? _selectedStock;
   bool _isSaving = false;
   String? _editingId;
+  String _searchQuery = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _clearForm() {
     _tickerController.clear();
@@ -474,11 +492,24 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
           ),
         ),
         Divider(),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              labelText: 'Search by Ticker',
+              prefixIcon: Icon(Icons.search),
+              isDense: true,
+            ),
+          ),
+        ),
+        SizedBox(height: 8),
         Expanded(
           child: ListView.builder(
-            itemCount: widget.items.length,
+            itemCount: widget.items.where((item) => item.stock.ticker.toLowerCase().contains(_searchQuery)).length,
             itemBuilder: (context, index) {
-              final item = widget.items[index];
+              final filteredItems = widget.items.where((item) => item.stock.ticker.toLowerCase().contains(_searchQuery)).toList();
+              final item = filteredItems[index];
               return Card(
                 margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: ListTile(

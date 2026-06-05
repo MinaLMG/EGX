@@ -94,4 +94,15 @@ class ApiService {
       throw Exception(body['message'] ?? 'Failed to create stock');
     }
   }
+
+  Future<void> acceptHint() async {
+    final headers = await _auth.authHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/accept-hint'),
+      headers: headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to update hint rank');
+    }
+  }
 }

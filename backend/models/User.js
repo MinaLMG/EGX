@@ -32,6 +32,15 @@ const UserSchema = new mongoose.Schema({
     lastPendingSuggestions: {
         type: [String], // Array of tickers that have active "Buy" or "Sell" suggestions
         default: []
+    },
+    rank: {
+        type: Number,
+        enum: [0, 1, 2, 3],
+        default: 0
+    },
+    lastHintDate: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true });
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getMe, getUsers, updateUserStatus, resetUserPassword, changePassword, updateFcmToken, logout } = require('../controllers/authController');
+const { register, login, getMe, getUsers, updateUserStatus, resetUserPassword, changePassword, updateFcmToken, logout, acceptHint } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/auth');
 
 router.post('/register', register);
@@ -9,6 +9,7 @@ router.get('/me', protect, getMe);
 router.patch('/change-password', protect, changePassword);
 router.patch('/fcm-token', protect, updateFcmToken);
 router.post('/logout', protect, logout);
+router.post('/accept-hint', protect, acceptHint);
 
 // Admin only routes
 router.get('/users', protect, authorize('admin'), getUsers);

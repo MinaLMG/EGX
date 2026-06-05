@@ -6,7 +6,7 @@ class WalletService {
      * Gets the populated wallet for a user.
      */
     async getPopulatedWallet(userId) {
-        let wallet = await Wallet.findOne({ user: userId }).populate('items.stock').populate('user', 'name');
+        let wallet = await Wallet.findOne({ user: userId }).populate('items.stock').populate('user', 'name rank lastHintDate');
         if (!wallet) {
             wallet = await Wallet.create({ user: userId, items: [], transactions: [] });
         }

@@ -40,6 +40,7 @@ class _WalletScreenState extends State<WalletScreen> {
   String _mode = 'automatic';
   String _sortCriteria = 'score'; // score (default), supposed, real, deviation
   bool _isAscending = false;
+  final Set<String> _showSharesTickers = {};
 
   @override
   void initState() {
@@ -96,6 +97,7 @@ class _WalletScreenState extends State<WalletScreen> {
       _qtyController.clear();
       setState(() => _selectedStock = null);
       await _loadData();
+      _checkShowHint();
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -120,6 +122,7 @@ class _WalletScreenState extends State<WalletScreen> {
         targetUserId: widget.targetUserId,
       );
       await _loadData();
+      _checkShowHint();
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -135,6 +138,7 @@ class _WalletScreenState extends State<WalletScreen> {
         targetUserId: widget.targetUserId,
       );
       await _loadData();
+      _checkShowHint();
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -236,6 +240,58 @@ class _WalletScreenState extends State<WalletScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
+  }
+
+  Future<void> _checkShowHint() async {
+    final user = _walletData?['wallet']?['user'];
+    if (user == null || user['rank'] == 3) return;
+
+    final lastHintStr = user['lastHintDate'];
+    if (lastHintStr != null) {
+      final lastDate = DateTime.parse(lastHintStr).toLocal();
+      final diff = DateTime.now().difference(lastDate);
+      if (diff.inHours < 24) return;
+    }
+
+    // Show modal
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          'تنبيه هام',
+          textAlign: TextAlign.right,
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'تعديل كمية السهم او اضافة سهم جديد للمحفظة معناه ان الكاش اتغير .. متنساش تعدله بعد كل عملية تستلزم تغيير الكاش .. لو معملتش كده يبقى انت حاطط قيم غلط ف الابلكيشن هيديك نتايج غلط .. متضيعش فلوسك بسبب غلطة زى دى :D',
+          textAlign: TextAlign.right,
+          textDirection: TextDirection.rtl,
+        ),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await _apiService.acceptHint();
+                  // No need to reload data immediately as it's a metadata increase
+                  // But we'll reload just to be sure next update check is fresh
+                  _loadData();
+                } catch (e) {
+                  print('Error accepting hint: $e');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('فهمت، شكراً'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Admin-only: Add / edit a snapshot
@@ -472,7 +528,7 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ),
           Text(
-            'Stocks requiring rebalancing (±10% deviation)',
+            'Stocks requiring rebalancing (±${((_walletData?['wallet']?['rebalancingThreshold'] ?? 0.1) * 100).toStringAsFixed(0)}% deviation)',
             style: TextStyle(color: Colors.black54, fontSize: 13),
           ),
           SizedBox(height: 16),
@@ -514,7 +570,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget _buildPredictionsTab() {
     if (_walletData?['analysis'] == null) return SizedBox.shrink();
 
-    // Filter to only 'Hold' stocks (less than 10% diff)
+    // Filter to only 'Hold' stocks (less than deviation% diff)
     final List items = (_walletData!['analysis'] as List)
         .where((i) => i['suggestion'] == 'Hold')
         .toList();
@@ -593,37 +649,49 @@ class _WalletScreenState extends State<WalletScreen> {
                       Divider(),
                       _predictRow(
                         'Trigger Price',
-                        'EGP ${targetPrice.toStringAsFixed(2)}',
+                        'EGP ${targetPrice.toString().contains('.') ? targetPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : targetPrice.toStringAsFixed(0)}',
                         isPrimary: true,
                       ),
                       _predictRow(
                         'Current Price',
-                        'EGP ${currentPrice.toStringAsFixed(2)}',
+                        'EGP ${currentPrice.toString().contains('.') ? currentPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : currentPrice.toStringAsFixed(0)}',
                       ),
                       _predictRow(
                         'Expected Trade Value',
                         'EGP ${tradeValue.toStringAsFixed(0)}',
                       ),
-                      Row(
-                        children: [
-                          Text(
-                            'Balanced Trade Value',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isSellingSide ? Colors.red : Colors.green,
-                              fontWeight: FontWeight.bold,
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (_showSharesTickers.contains(item['ticker'])) {
+                              _showSharesTickers.remove(item['ticker']);
+                            } else {
+                              _showSharesTickers.add(item['ticker']);
+                            }
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Text(
+                              _showSharesTickers.contains(item['ticker'])
+                                  ? '${item['predictShares']} shares'
+                                  : 'Balanced Trade Value: EGP ${tradeValue.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isSellingSide
+                                    ? Colors.red
+                                    : Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                          SizedBox(width: 4),
-                          Tooltip(
-                            message: '${item['predictShares']} shares',
-                            child: Icon(
-                              Icons.help_outline,
-                              size: 14,
-                              color: Colors.grey,
+                            SizedBox(width: 6),
+                            Icon(
+                              Icons.swap_horiz,
+                              size: 16,
+                              color: Colors.grey.withOpacity(0.5),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       SizedBox(height: 8),
                       LinearProgressIndicator(
@@ -1435,104 +1503,164 @@ class _WalletScreenState extends State<WalletScreen> {
                   width: 1.5,
                 ),
               ),
-              child: ListTile(
-                isThreeLine: true,
+              child: InkWell(
                 onTap: () => _showManageModal(item),
-                leading: CircleAvatar(
-                  backgroundColor: _suggestionColor(
-                    suggestion,
-                  ).withOpacity(0.15),
-                  child: Text(
-                    '${item['rank']}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: _suggestionColor(suggestion),
-                    ),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0,
+                    vertical: 10.0,
                   ),
-                ),
-                title: Row(
-                  children: [
-                    Text(
-                      '${item['ticker']}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      '(${deviation.toStringAsFixed(1)}%)',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: (item['realMarketValue'] > item['supposedValue'])
-                            ? Colors.red
-                            : Colors.green,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: Icon(
-                        Icons.settings,
-                        size: 14,
-                        color: Colors.blue.withOpacity(0.5),
-                      ),
-                    ),
-                  ],
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Qty: ${item['quantity']}  ×  EGP ${(item['currentPrice'] as num).toStringAsFixed(2)}',
-                      style: TextStyle(color: Colors.black87),
-                    ),
-                    Text(
-                      'Real: EGP ${(item['realMarketValue'] as num).toStringAsFixed(0)}  →  Supposed: EGP ${(item['supposedValue'] as num).toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                  ],
-                ),
-                trailing: SizedBox(
-                  width: 70,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(
-                        _suggestionIcon(suggestion),
-                        color: _suggestionColor(suggestion),
-                        size: 18,
-                      ),
-                      Text(
-                        suggestion,
-                        style: TextStyle(
-                          color: _suggestionColor(suggestion),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 9,
+                      // Leading: Rank Avatar
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: _suggestionColor(
+                          suggestion,
+                        ).withOpacity(0.15),
+                        child: Text(
+                          '${item['rank']}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: _suggestionColor(suggestion),
+                          ),
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'EGP ${(item['gap'] as num).toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
+                      SizedBox(width: 12),
+
+                      // Middle: Title & Subtitle (Ticker, Price, Qty)
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  '${item['ticker']}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  '(${deviation.toStringAsFixed(1)}%)',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        (item['realMarketValue'] >
+                                            item['supposedValue'])
+                                        ? Colors.red
+                                        : Colors.green,
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.settings,
+                                  size: 13,
+                                  color: Colors.blue.withOpacity(0.4),
+                                ),
+                              ],
                             ),
-                          ),
-                          SizedBox(width: 2),
-                          Tooltip(
-                            message: '${item['gapShares']} shares',
-                            child: Icon(
-                              Icons.help_outline,
-                              size: 10,
-                              color: Colors.grey,
+                            SizedBox(height: 2),
+                            Text(
+                              'Qty: ${item['quantity']}  ×  EGP ${((item['currentPrice'] as num).toDouble()).toString().contains('.') ? (item['currentPrice'] as num).toDouble().toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : (item['currentPrice'] as num).toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.black87,
+                              ),
                             ),
-                          ),
-                        ],
+                            Text(
+                              'Real: EGP ${(item['realMarketValue'] as num).toStringAsFixed(0)}  →  Supposed: EGP ${(item['supposedValue'] as num).toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.black54,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8),
+
+                      // Trailing: Suggestion & Toggleable Value
+                      SizedBox(
+                        width: 80,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _suggestionIcon(suggestion),
+                                  color: _suggestionColor(suggestion),
+                                  size: 16,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  suggestion,
+                                  style: TextStyle(
+                                    color: _suggestionColor(suggestion),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 4),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  if (_showSharesTickers.contains(
+                                    item['ticker'],
+                                  )) {
+                                    _showSharesTickers.remove(item['ticker']);
+                                  } else {
+                                    _showSharesTickers.add(item['ticker']);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  vertical: 2,
+                                  horizontal: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      _showSharesTickers.contains(
+                                        item['ticker'],
+                                      )
+                                      ? Colors.indigo.withOpacity(0.05)
+                                      : Colors.black.withOpacity(0.03),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  _showSharesTickers.contains(item['ticker'])
+                                      ? '${item['gapShares']} sh.'
+                                      : 'EGP ${(item['gap'] as num).toStringAsFixed(0)}',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color:
+                                        _showSharesTickers.contains(
+                                          item['ticker'],
+                                        )
+                                        ? Colors.indigo
+                                        : Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -1672,7 +1800,8 @@ class _WalletScreenState extends State<WalletScreen> {
                     manualPrice: _mode == 'manual' ? newPrice : null,
                     targetUserId: widget.targetUserId,
                   );
-                  _loadData();
+                  await _loadData();
+                  _checkShowHint();
                 }
               },
               style: ElevatedButton.styleFrom(
