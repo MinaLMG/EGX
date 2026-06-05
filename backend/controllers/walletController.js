@@ -12,7 +12,11 @@ const _calcWalletInternal = async (userId) => {
 exports.getWallet = async (req, res) => {
     try {
         const data = await _calcWalletInternal(req.user._id);
-        res.json(data);
+        res.json({
+            ...data,
+            requesterRank: req.user.rank,
+            requesterLastHintDate: req.user.lastHintDate
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -23,7 +27,11 @@ exports.getWallet = async (req, res) => {
 exports.getWalletForUser = async (req, res) => {
     try {
         const data = await _calcWalletInternal(req.params.userId);
-        res.json(data);
+        res.json({
+            ...data,
+            requesterRank: req.user.rank,
+            requesterLastHintDate: req.user.lastHintDate
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

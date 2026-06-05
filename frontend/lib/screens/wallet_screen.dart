@@ -243,10 +243,10 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Future<void> _checkShowHint() async {
-    final user = _walletData?['wallet']?['user'];
-    if (user == null || user['rank'] == 3) return;
+    final rank = _walletData?['requesterRank'];
+    if (rank == null || rank == 3) return;
 
-    final lastHintStr = user['lastHintDate'];
+    final lastHintStr = _walletData?['requesterLastHintDate'];
     if (lastHintStr != null) {
       final lastDate = DateTime.parse(lastHintStr).toLocal();
       final diff = DateTime.now().difference(lastDate);
