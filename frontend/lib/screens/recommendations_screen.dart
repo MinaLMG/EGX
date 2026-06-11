@@ -7,6 +7,7 @@ import '../models/recommendation.dart';
 import '../services/recommendation_service.dart';
 import '../services/api_service.dart';
 import '../models/stock.dart';
+import '../l10n/app_localizations.dart';
 
 class RecommendationsScreen extends StatefulWidget {
   @override
@@ -27,46 +28,50 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
   }
 
   Future<void> _loadData() async {
+    final l = AppLocalizations.of(context);
     setState(() => _isLoading = true);
     try {
       final data = await _service.fetchAll();
       final stocks = await _apiService.fetchStocks();
-      setState(() {
-        _data = data;
-        _allStocks = stocks;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _data = data;
+          _allStocks = stocks;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading data: $e')));
-      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return DefaultTabController(
       length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Recommendations Management'),
+          title: Text(l.t('admin_recommendations')),
           bottom: TabBar(
             isScrollable: true,
             tabs: [
-              Tab(text: 'BF Update'),
-              Tab(text: 'Fundamental (${_data?.fundamental.length ?? 0})'),
-              Tab(text: 'Technical (${_data?.technical.length ?? 0})'),
-              Tab(text: 'RFP (${_data?.rfp.length ?? 0})'),
-              Tab(text: 'RSP (${_data?.rsp.length ?? 0})'),
+              Tab(text: l.t('bf_update')),
+              Tab(text: '${l.t('fundamental')} (${_data?.fundamental.length ?? 0})'),
+              Tab(text: '${l.t('technical')} (${_data?.technical.length ?? 0})'),
+              Tab(text: '${l.t('rfp')} (${_data?.rfp.length ?? 0})'),
+              Tab(text: '${l.t('rsp')} (${_data?.rsp.length ?? 0})'),
             ],
           ),
         ),
         body: _isLoading
-            ? Center(child: CircularProgressIndicator())
+            ? const Center(child: CircularProgressIndicator())
             : TabBarView(
                 children: [
-                  _BfUpdateTab(onRefresh: _loadData),
+                   _BfUpdateTab(onRefresh: _loadData),
                   _RecommendationListTab(
                     type: 'fundamental',
                     items: _data?.fundamental ?? [],
@@ -112,6 +117,7 @@ class __BfUpdateTabState extends State<_BfUpdateTab> {
   List<Map<String, dynamic>> _parsedData = [];
 
   Future<void> _pickAndParseFile() async {
+    final l = AppLocalizations.of(context);
     fp.FilePickerResult? result = await fp.FilePicker.pickFiles(
       type: fp.FileType.custom,
       allowedExtensions: ['xlsx', 'xls'],
@@ -134,8 +140,6 @@ class __BfUpdateTabState extends State<_BfUpdateTab> {
         if (table == null) throw Exception("Excel sheet is empty");
 
         List<Map<String, dynamic>> data = [];
-        // Assuming first column is Ticker, second is BF Price
-        // Skip header row if needed (I'll check if first row looks like header)
         for (var i = 0; i < table.maxRows; i++) {
           var row = table.rows[i];
           if (row.length < 2) continue;
@@ -146,71 +150,75 @@ class __BfUpdateTabState extends State<_BfUpdateTab> {
           if (ticker == null || valueStr == null) continue;
 
           var value = double.tryParse(valueStr);
-          if (value == null) continue; // Skip header or invalid rows
+          if (value == null) continue; 
 
           data.add({'ticker': ticker.toUpperCase(), 'value': value});
         }
 
-        setState(() {
-          _parsedData = data;
-          _fileName = result.files.first.name;
-          _isProcessing = false;
-        });
+        if (mounted) {
+          setState(() {
+            _parsedData = data;
+            _fileName = result.files.first.name;
+            _isProcessing = false;
+          });
+        }
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error parsing file: $e')));
-        setState(() => _isProcessing = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
+          setState(() => _isProcessing = false);
+        }
       }
     }
   }
 
   Future<void> _upload() async {
+    final l = AppLocalizations.of(context);
     if (_parsedData.isEmpty) return;
 
     setState(() => _isProcessing = true);
     try {
       await RecommendationService().updateBfPrices(_parsedData);
-      setState(() {
-        _parsedData = [];
-        _fileName = null;
-      });
-      widget.onRefresh();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('BF Prices updated successfully from Excel')),
-      );
+      if (mounted) {
+        setState(() {
+          _parsedData = [];
+          _fileName = null;
+        });
+        widget.onRefresh();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.t('success'))),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error uploading: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     } finally {
-      setState(() => _isProcessing = false);
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.file_upload, size: 64, color: Colors.deepPurple),
-          SizedBox(height: 20),
+          const Icon(Icons.file_upload, size: 64, color: Colors.deepPurple),
+          const SizedBox(height: 20),
           Text(
-            'BF Price Bulk Update (Excel)',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            l.t('bf_update'),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Upload an Excel file with 2 columns: Ticker and BF Price.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(color: Colors.grey.shade600),
           ),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
           if (_fileName != null) ...[
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.green.shade50,
                 borderRadius: BorderRadius.circular(10),
@@ -218,15 +226,15 @@ class __BfUpdateTabState extends State<_BfUpdateTab> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green),
-                  SizedBox(width: 12),
+                  const Icon(Icons.check_circle, color: Colors.green),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Loaded: $_fileName (${_parsedData.length} records)',
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close),
+                    icon: const Icon(Icons.close),
                     onPressed: () => setState(() {
                       _fileName = null;
                       _parsedData = [];
@@ -235,26 +243,26 @@ class __BfUpdateTabState extends State<_BfUpdateTab> {
                 ],
               ),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
           ],
           ElevatedButton.icon(
             onPressed: _isProcessing ? null : _pickAndParseFile,
-            icon: Icon(Icons.search),
-            label: Text('Select Excel File'),
+            icon: const Icon(Icons.search),
+            label: Text(l.t('select_excel')),
             style: ElevatedButton.styleFrom(
-              minimumSize: Size(double.infinity, 50),
+              minimumSize: const Size(double.infinity, 50),
               backgroundColor: Colors.deepPurple,
               foregroundColor: Colors.white,
             ),
           ),
           if (_parsedData.isNotEmpty) ...[
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _isProcessing ? null : _upload,
-              icon: Icon(Icons.cloud_upload),
-              label: Text(_isProcessing ? 'Processing...' : 'Sync to Server'),
+              icon: const Icon(Icons.cloud_upload),
+              label: Text(_isProcessing ? '${l.t('loading')}...' : l.t('sync_server')),
               style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50),
+                minimumSize: const Size(double.infinity, 50),
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
               ),
@@ -284,7 +292,6 @@ class _RecommendationListTab extends StatefulWidget {
 }
 
 class __RecommendationListTabState extends State<_RecommendationListTab> {
-  final _tickerController = TextEditingController();
   final _targetController = TextEditingController();
   final _notesController = TextEditingController();
   final _searchController = TextEditingController();
@@ -297,20 +304,23 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toLowerCase();
-      });
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text.toLowerCase();
+        });
+      }
     });
   }
 
   @override
   void dispose() {
+    _targetController.dispose();
+    _notesController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   void _clearForm() {
-    _tickerController.clear();
     _targetController.clear();
     _notesController.clear();
     setState(() {
@@ -320,6 +330,7 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
   }
 
   Future<void> _save() async {
+    final l = AppLocalizations.of(context);
     if (_targetController.text.isEmpty) return;
     if (_editingId == null && _selectedStock == null) return;
 
@@ -348,11 +359,9 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
       _clearForm();
       widget.onRefresh();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     } finally {
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -360,13 +369,13 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
     setState(() {
       _editingId = item.id;
       _selectedStock = item.stock;
-      _tickerController.text = item.stock.ticker;
       _targetController.text = item.target.toString();
       _notesController.text = item.notes ?? "";
     });
   }
 
   Future<void> _delete(String id) async {
+    final l = AppLocalizations.of(context);
     try {
       if (widget.type == 'fundamental') {
         await RecommendationService().deleteFundamental(id);
@@ -375,112 +384,83 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
       }
       widget.onRefresh();
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ExpansionTile(
             title: Text(
-              'Add New Recommendation',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              _editingId == null ? l.t('add_call') : l.t('update_call'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: Column(
                   children: [
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     if (_editingId != null)
                       Text(
                         'Editing: ${_selectedStock?.ticker}',
-                        style: TextStyle(
-                          color: Colors.deepPurple,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
                       )
                     else
                       Autocomplete<Stock>(
-                        displayStringForOption: (Stock option) =>
-                            '${option.ticker} - ${option.name ?? ""}',
+                        displayStringForOption: (Stock option) => '${option.ticker} - ${option.name ?? ""}',
                         optionsBuilder: (TextEditingValue textEditingValue) {
-                          if (textEditingValue.text == '') {
-                            return const Iterable<Stock>.empty();
-                          }
+                          if (textEditingValue.text == '') return const Iterable<Stock>.empty();
                           return widget.allStocks.where((Stock option) {
-                            return option.ticker.contains(
-                                  textEditingValue.text.toUpperCase(),
-                                ) ||
-                                (option.name?.toUpperCase() ?? "").contains(
-                                  textEditingValue.text.toUpperCase(),
-                                );
+                            final q = textEditingValue.text.toUpperCase();
+                            return option.ticker.contains(q) || (option.name?.toUpperCase() ?? "").contains(q);
                           });
                         },
-                        onSelected: (Stock selection) {
-                          setState(() => _selectedStock = selection);
+                        onSelected: (Stock selection) => setState(() => _selectedStock = selection),
+                        fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                          return TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            decoration: InputDecoration(
+                              labelText: '${l.t('market_data')} (Ticker/Name)',
+                              prefixIcon: const Icon(Icons.search),
+                            ),
+                          );
                         },
-                        fieldViewBuilder:
-                            (context, controller, focusNode, onFieldSubmitted) {
-                              return TextField(
-                                controller: controller,
-                                focusNode: focusNode,
-                                decoration: InputDecoration(
-                                  labelText: 'Select Stock (Ticker or Name)',
-                                  prefixIcon: Icon(Icons.search),
-                                ),
-                              );
-                            },
                       ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: _targetController,
-                      decoration: InputDecoration(labelText: 'Target Price'),
+                      decoration: InputDecoration(labelText: l.t('target_price')),
                       keyboardType: TextInputType.number,
                     ),
                     if (widget.type == 'technical')
                       TextField(
                         controller: _notesController,
-                        decoration: InputDecoration(labelText: 'Notes'),
+                        decoration: InputDecoration(labelText: l.t('notes')),
                       ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         if (_editingId != null)
                           Expanded(
-                            child: OutlinedButton(
-                              onPressed: _clearForm,
-                              child: Text('Cancel'),
-                            ),
+                            child: OutlinedButton(onPressed: _clearForm, child: Text(l.t('cancel'))),
                           ),
-                        if (_editingId != null) SizedBox(width: 8),
+                        if (_editingId != null) const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed:
-                                (_isSaving ||
-                                    (_editingId == null &&
-                                        _selectedStock == null))
-                                ? null
-                                : _save,
-                            child: Text(
-                              _editingId == null ? 'Add Call' : 'Update Call',
-                            ),
+                            onPressed: (_isSaving || (_editingId == null && _selectedStock == null)) ? null : _save,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _editingId == null
-                                  ? Colors.deepPurple
-                                  : Colors.green,
+                              backgroundColor: _editingId == null ? Colors.deepPurple : Colors.green,
                               foregroundColor: Colors.white,
-                              fixedSize: Size.fromHeight(45),
+                              fixedSize: const Size.fromHeight(45),
                             ),
+                            child: Text(_editingId == null ? l.t('add_call') : l.t('update_call')),
                           ),
                         ),
                       ],
@@ -491,19 +471,19 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
             ],
           ),
         ),
-        Divider(),
+        const Divider(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              labelText: 'Search by Ticker',
-              prefixIcon: Icon(Icons.search),
+              labelText: l.t('search_ticker'),
+              prefixIcon: const Icon(Icons.search),
               isDense: true,
             ),
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Expanded(
           child: ListView.builder(
             itemCount: widget.items.where((item) => item.stock.ticker.toLowerCase().contains(_searchQuery)).length,
@@ -511,27 +491,16 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
               final filteredItems = widget.items.where((item) => item.stock.ticker.toLowerCase().contains(_searchQuery)).toList();
               final item = filteredItems[index];
               return Card(
-                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: ListTile(
-                  title: Text(
-                    item.stock.ticker,
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    'Target: ${item.target}${item.notes != null && item.notes!.isNotEmpty ? "\nNotes: ${item.notes}" : ""}',
-                  ),
+                  title: Text(item.stock.ticker, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('Target: ${item.target}${item.notes != null && item.notes!.isNotEmpty ? "\n${l.t('notes')}: ${item.notes}" : ""}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (widget.type == 'technical')
-                        IconButton(
-                          icon: Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _startEditing(item),
-                        ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _delete(item.id),
-                      ),
+                        IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _startEditing(item)),
+                      IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () => _delete(item.id)),
                     ],
                   ),
                 ),
@@ -563,7 +532,6 @@ class _OrderedListTab extends StatefulWidget {
 
 class __OrderedListTabState extends State<_OrderedListTab> {
   late List<Recommendation> _currentItems;
-  final _scoreController = TextEditingController();
   Stock? _selectedStock;
   bool _isSaving = false;
 
@@ -580,71 +548,47 @@ class __OrderedListTabState extends State<_OrderedListTab> {
   }
 
   Future<void> _save() async {
+    final l = AppLocalizations.of(context);
     setState(() => _isSaving = true);
     try {
       final stocks = <Map<String, dynamic>>[];
       for (var i = 0; i < _currentItems.length; i++) {
         double score = 1.0;
-        if (widget.type == 'rsp') {
-          score = 1.0 - (i * 0.02);
-          if (score < 0) score = 0; // Prevent negative scores
-        } else if (widget.type == 'rfp') {
-          score = 1.0; // Per user request: RFP internal score is always 1
-        }
-
+        if (widget.type == 'rsp') { score = 1.0 - (i * 0.02); if (score < 0) score = 0; }
+        else if (widget.type == 'rfp') { score = 1.0; }
         stocks.add({'ticker': _currentItems[i].stock.ticker, 'score': score});
       }
-
-      if (widget.type == 'rfp') {
-        await RecommendationService().updateRFP(stocks);
-      } else {
-        await RecommendationService().updateRSP(stocks);
-      }
+      if (widget.type == 'rfp') { await RecommendationService().updateRFP(stocks); }
+      else { await RecommendationService().updateRSP(stocks); }
       widget.onRefresh();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Arrangement and scores saved successfully')),
-      );
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.t('success'))));
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     } finally {
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   Future<void> _addItem() async {
+    final l = AppLocalizations.of(context);
     if (_selectedStock == null) return;
-
-    // Check if already exists
     if (_currentItems.any((s) => s.stock.ticker == _selectedStock!.ticker)) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Stock already in list')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.t('stock_already_in_list'))));
       return;
     }
-
-    // Add to list then save to trigger re-calculation of all scores
-    // Create a temporary Recommendation object
     final tempRec = Recommendation(
       id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
       stock: _selectedStock!,
-      score: 1.0, // Will be recalculated on save
+      score: 1.0,
     );
-
-    setState(() {
-      _currentItems.add(tempRec);
-    });
-
-    // Save immediately to persist and sync scores
+    setState(() => _currentItems.add(tempRec));
     await _save();
-
-    _scoreController.clear();
     setState(() => _selectedStock = null);
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       children: [
         Padding(
@@ -652,48 +596,33 @@ class __OrderedListTabState extends State<_OrderedListTab> {
           child: Column(
             children: [
               Autocomplete<Stock>(
-                displayStringForOption: (Stock option) =>
-                    '${option.ticker} - ${option.name ?? ""}',
+                displayStringForOption: (Stock option) => '${option.ticker} - ${option.name ?? ""}',
                 optionsBuilder: (TextEditingValue textEditingValue) {
-                  if (textEditingValue.text == '') {
-                    return const Iterable<Stock>.empty();
-                  }
+                  if (textEditingValue.text == '') return const Iterable<Stock>.empty();
                   return widget.allStocks.where((Stock option) {
-                    return option.ticker.contains(
-                          textEditingValue.text.toUpperCase(),
-                        ) ||
-                        (option.name?.toUpperCase() ?? "").contains(
-                          textEditingValue.text.toUpperCase(),
-                        );
+                    final q = textEditingValue.text.toUpperCase();
+                    return option.ticker.contains(q) || (option.name?.toUpperCase() ?? "").contains(q);
                   });
                 },
-                onSelected: (Stock selection) {
-                  setState(() => _selectedStock = selection);
+                onSelected: (Stock selection) => setState(() => _selectedStock = selection),
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(labelText: l.t('add_to_list'), prefixIcon: const Icon(Icons.search)),
+                  );
                 },
-                fieldViewBuilder:
-                    (context, controller, focusNode, onFieldSubmitted) {
-                      return TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        decoration: InputDecoration(
-                          labelText: 'Select Stock to Add',
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                      );
-                    },
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               ElevatedButton(
                 onPressed: _selectedStock == null ? null : _addItem,
-                child: Text('Add to List'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 40),
-                ),
+                style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 40)),
+                child: Text(l.t('add_to_list')),
               ),
             ],
           ),
         ),
-        Text('Drag items to reorder. Then click Save Arrangement.'),
+        Text(l.t('drag_reorder')),
         Expanded(
           child: ReorderableListView(
             onReorder: (oldIndex, newIndex) {
@@ -714,15 +643,8 @@ class __OrderedListTabState extends State<_OrderedListTab> {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.remove_circle, color: Colors.red),
-                      onPressed: () {
-                        setState(() {
-                          _currentItems.remove(item);
-                        });
-                      },
-                    ),
-                    Icon(Icons.drag_handle),
+                    IconButton(icon: const Icon(Icons.remove_circle, color: Colors.red), onPressed: () => setState(() => _currentItems.remove(item))),
+                    const Icon(Icons.drag_handle),
                   ],
                 ),
               );
@@ -733,12 +655,12 @@ class __OrderedListTabState extends State<_OrderedListTab> {
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton(
             onPressed: _isSaving ? null : _save,
-            child: Text('Save Arrangement'),
             style: ElevatedButton.styleFrom(
-              minimumSize: Size(double.infinity, 50),
+              minimumSize: const Size(double.infinity, 50),
               backgroundColor: Colors.deepPurple,
               foregroundColor: Colors.white,
             ),
+            child: Text(l.t('save_arrangement')),
           ),
         ),
       ],

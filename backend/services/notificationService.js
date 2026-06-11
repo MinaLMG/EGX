@@ -39,7 +39,7 @@ class NotificationService {
      */
     async checkAllWalletsAndNotify() {
         console.log('Notification Check: Starting wallet analysis for all users...');
-        const users = await User.find({ status: 'active' });
+        const users = await User.find({ status: 'active', isDeleted: false });
 
         let totalSent = 0;
 

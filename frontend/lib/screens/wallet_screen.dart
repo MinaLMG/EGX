@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/wallet_service.dart';
 import '../services/api_service.dart';
 import '../models/stock.dart';
+import '../l10n/app_localizations.dart';
 
 class WalletScreen extends StatefulWidget {
   final String? targetUserId;
@@ -97,38 +98,16 @@ class _WalletScreenState extends State<WalletScreen> {
       _qtyController.clear();
       setState(() => _selectedStock = null);
       await _loadData();
-      _checkShowHint();
+      if (mounted) _checkShowHint(AppLocalizations.of(context));
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
-  Future<void> _updateManualPrice(String ticker, double price) async {
-    try {
-      // Find current qty
-      final items = _walletData?['wallet']?['items'] as List?;
-      final item = items?.firstWhere(
-        (i) => i['stock']['ticker'] == ticker,
-        orElse: () => null,
-      );
-      int qty = item != null ? item['quantity'] : 0;
-
-      await _walletService.updateItem(
-        ticker,
-        qty,
-        manualPrice: price,
-        targetUserId: widget.targetUserId,
-      );
-      await _loadData();
-      _checkShowHint();
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
 
   Future<void> _removeStock(String ticker) async {
     try {
@@ -138,11 +117,13 @@ class _WalletScreenState extends State<WalletScreen> {
         targetUserId: widget.targetUserId,
       );
       await _loadData();
-      _checkShowHint();
+      if (mounted) _checkShowHint(AppLocalizations.of(context));
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
   }
 
@@ -162,7 +143,7 @@ class _WalletScreenState extends State<WalletScreen> {
       await _loadData();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Settings saved')));
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).t('settings_saved'))));
     } catch (e) {
       ScaffoldMessenger.of(
         context,
@@ -242,7 +223,7 @@ class _WalletScreenState extends State<WalletScreen> {
     }
   }
 
-  Future<void> _checkShowHint() async {
+  Future<void> _checkShowHint(AppLocalizations l) async {
     final rank = _walletData?['requesterRank'];
     if (rank == null || rank == 3) return;
 
@@ -259,12 +240,12 @@ class _WalletScreenState extends State<WalletScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(
-          'تنبيه هام',
+          l.t('hint_title'),
           textAlign: TextAlign.right,
           style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'تعديل كمية السهم او اضافة سهم جديد للمحفظة معناه ان الكاش اتغير .. متنساش تعدله بعد كل عملية تستلزم تغيير الكاش .. لو معملتش كده يبقى انت حاطط قيم غلط ف الابلكيشن هيديك نتايج غلط .. متضيعش فلوسك بسبب غلطة زى دى :D',
+          l.t('hint_body'),
           textAlign: TextAlign.right,
           textDirection: TextDirection.rtl,
         ),
@@ -286,7 +267,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
               ),
-              child: Text('فهمت، شكراً'),
+              child: Text(l.t('hint_confirm')),
             ),
           ),
         ],
@@ -295,7 +276,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   // Admin-only: Add / edit a snapshot
-  void _showSnapshotDialog({Map? snap}) {
+  void _showSnapshotDialog(AppLocalizations l, {Map? snap}) {
     final balanceCtrl = TextEditingController(
       text: snap != null ? snap['balance'].toString() : '',
     );
@@ -310,14 +291,14 @@ class _WalletScreenState extends State<WalletScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(snap == null ? 'Add Balance Snapshot' : 'Edit Snapshot'),
+          title: Text(snap == null ? l.t('add_snapshot') : l.t('edit_snapshot')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text('Date: ${snapDate.toString().split(' ')[0]}'),
+                  title: Text('${l.t('snap_date')}: ${snapDate.toString().split(' ')[0]}'),
                   trailing: Icon(Icons.calendar_today),
                   onTap: () async {
                     final d = await showDatePicker(
@@ -333,7 +314,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   controller: balanceCtrl,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: 'Wallet Balance (EGP)',
+                    labelText: l.t('snap_balance_label'),
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -342,9 +323,9 @@ class _WalletScreenState extends State<WalletScreen> {
                   controller: bankRatioCtrl,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    labelText: 'Bank Interest Ratio (Annual %)',
+                    labelText: l.t('snap_bank_ratio_label'),
                     border: OutlineInputBorder(),
-                    helperText: 'e.g. 25 for 25% annual return',
+                    helperText: l.t('snap_bank_ratio_helper'),
                   ),
                 ),
               ],
@@ -414,15 +395,15 @@ class _WalletScreenState extends State<WalletScreen> {
         return Icons.pause;
     }
   }
-
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final userNameFromData = _walletData?['wallet']?['user']?['name'];
-    final title = widget.targetUserName != null
-        ? 'Simulating: ${widget.targetUserName}'
+    final title = widget.targetUserId != null
+        ? '${l.t('simulating_prefix')}${widget.targetUserName ?? "..."}'
         : (userNameFromData != null
-              ? "$userNameFromData's Wallet"
-              : 'My Wallet');
+              ? "$userNameFromData${l.t('users_wallet_suffix')}"
+              : l.t('my_wallet_title'));
     return DefaultTabController(
       length: 4,
       child: Scaffold(
@@ -433,15 +414,15 @@ class _WalletScreenState extends State<WalletScreen> {
             isScrollable: true,
             tabs: [
               Tab(
-                text: 'Portfolio',
+                text: l.t('portfolio'),
                 icon: Icon(Icons.account_balance_wallet, size: 20),
               ),
               Tab(
-                text: 'Pending',
+                text: l.t('pending'),
                 icon: Icon(Icons.notifications_active, size: 20),
               ),
-              Tab(text: 'Next', icon: Icon(Icons.trending_up, size: 20)),
-              Tab(text: 'Profit', icon: Icon(Icons.calculate, size: 20)),
+              Tab(text: l.t('next'), icon: Icon(Icons.trending_up, size: 20)),
+              Tab(text: l.t('profit'), icon: Icon(Icons.calculate, size: 20)),
             ],
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white60,
@@ -455,17 +436,17 @@ class _WalletScreenState extends State<WalletScreen> {
             ? Center(child: CircularProgressIndicator())
             : TabBarView(
                 children: [
-                  _buildPortfolioTab(),
-                  _buildActionsTab(),
-                  _buildPredictionsTab(),
-                  _buildProfitTab(),
+                  _buildPortfolioTab(l),
+                  _buildActionsTab(l),
+                  _buildPredictionsTab(l),
+                  _buildProfitTab(l),
                 ],
               ),
       ),
     );
   }
 
-  Widget _buildPortfolioTab() {
+  Widget _buildPortfolioTab(AppLocalizations l) {
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
       child: Column(
@@ -473,13 +454,13 @@ class _WalletScreenState extends State<WalletScreen> {
         children: [
           _buildSummaryCard(),
           SizedBox(height: 16),
-          _buildSettingsSection(),
+          _buildSettingsSection(l),
           SizedBox(height: 8),
-          _buildAddStockSection(),
+          _buildAddStockSection(l),
           SizedBox(height: 16),
           Divider(),
           Text(
-            'Full Portfolio',
+            l.t('full_portfolio'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -491,9 +472,9 @@ class _WalletScreenState extends State<WalletScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: ElevatedButton.icon(
-                onPressed: _showBulkPriceDialog,
+                onPressed: () => _showBulkPriceDialog(l),
                 icon: Icon(Icons.edit_note),
-                label: Text('Bulk Edit Manual Prices'),
+                label: Text(l.t('bulk_edit_manual_prices')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
                   foregroundColor: Colors.white,
@@ -501,13 +482,13 @@ class _WalletScreenState extends State<WalletScreen> {
                 ),
               ),
             ),
-          _buildAnalysisList(onlyPending: false),
+          _buildAnalysisList(onlyPending: false, l: l),
         ],
       ),
     );
   }
 
-  Widget _buildActionsTab() {
+  Widget _buildActionsTab(AppLocalizations l) {
     final hasActions =
         _walletData?['analysis'] != null &&
         (_walletData!['analysis'] as List).any(
@@ -520,7 +501,7 @@ class _WalletScreenState extends State<WalletScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Pending Decisions',
+            l.t('pending_decisions'),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -528,12 +509,12 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ),
           Text(
-            'Stocks requiring rebalancing (±${((_walletData?['wallet']?['rebalancingThreshold'] ?? 0.1) * 100).toStringAsFixed(0)}% deviation)',
+            '${l.t('stocks_rebalancing_hint_prefix')}${((_walletData?['wallet']?['rebalancingThreshold'] ?? 0.1) * 100).toStringAsFixed(0)}${l.t('stocks_rebalancing_hint_suffix')}',
             style: TextStyle(color: Colors.black54, fontSize: 13),
           ),
           SizedBox(height: 16),
           if (hasActions)
-            _buildAnalysisList(onlyPending: true)
+            _buildAnalysisList(onlyPending: true, l: l)
           else
             Padding(
               padding: EdgeInsets.symmetric(vertical: 64),
@@ -547,7 +528,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'Your portfolio is balanced!',
+                      l.t('portfolio_balanced'),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
@@ -555,7 +536,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       ),
                     ),
                     Text(
-                      'No pending Buy/Sell actions.',
+                      l.t('no_actions_needed'),
                       style: TextStyle(color: Colors.black54),
                     ),
                   ],
@@ -567,7 +548,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildPredictionsTab() {
+  Widget _buildPredictionsTab(AppLocalizations l) {
     if (_walletData?['analysis'] == null) return SizedBox.shrink();
 
     // Filter to only 'Hold' stocks (less than deviation% diff)
@@ -594,7 +575,7 @@ class _WalletScreenState extends State<WalletScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Next Transactions',
+            l.t('next_transactions'),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -602,12 +583,12 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ),
           Text(
-            'Predicted targets based on current trends',
+            l.t('predicted_targets_subtitle'),
             style: TextStyle(color: Colors.black54, fontSize: 13),
           ),
           SizedBox(height: 16),
           if (top3.isEmpty)
-            _emptyState('No stocks in wallet to predict.')
+            _emptyState(l.t('no_stocks_to_predict'))
           else
             ...top3.map((item) {
               final qty = item['quantity'] as num;
@@ -643,21 +624,21 @@ class _WalletScreenState extends State<WalletScreen> {
                               color: Colors.blue.shade800,
                             ),
                           ),
-                          _trendBadge(isSellingSide),
+                          _trendBadge(isSellingSide, l),
                         ],
                       ),
                       Divider(),
                       _predictRow(
-                        'Trigger Price',
+                        l.t('trigger_price'),
                         'EGP ${targetPrice.toString().contains('.') ? targetPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : targetPrice.toStringAsFixed(0)}',
                         isPrimary: true,
                       ),
                       _predictRow(
-                        'Current Price',
+                        l.t('current_price_label'),
                         'EGP ${currentPrice.toString().contains('.') ? currentPrice.toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : currentPrice.toStringAsFixed(0)}',
                       ),
                       _predictRow(
-                        'Expected Trade Value',
+                        l.t('expected_trade_val'),
                         'EGP ${tradeValue.toStringAsFixed(0)}',
                       ),
                       GestureDetector(
@@ -674,8 +655,8 @@ class _WalletScreenState extends State<WalletScreen> {
                           children: [
                             Text(
                               _showSharesTickers.contains(item['ticker'])
-                                  ? '${item['predictShares']} shares'
-                                  : 'Balanced Trade Value: EGP ${tradeValue.toStringAsFixed(0)}',
+                                  ? '${item['predictShares']}${l.t('shares_suffix')}'
+                                  : '${l.t('balanced_trade_prefix')}${tradeValue.toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: isSellingSide
@@ -705,7 +686,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Text(
-                          '${((targetPrice - currentPrice) / currentPrice * 100).toStringAsFixed(1)}% to target',
+                          '${((targetPrice - currentPrice) / currentPrice * 100).toStringAsFixed(1)}${l.t('to_target')}',
                           style: TextStyle(fontSize: 10, color: Colors.grey),
                         ),
                       ),
@@ -719,7 +700,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _trendBadge(bool isSell) {
+  Widget _trendBadge(bool isSell, AppLocalizations l) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -730,7 +711,7 @@ class _WalletScreenState extends State<WalletScreen> {
         ),
       ),
       child: Text(
-        isSell ? 'SELL TREND' : 'BUY TREND',
+        isSell ? l.t('sell_trend') : l.t('buy_trend'),
         style: TextStyle(
           color: isSell ? Colors.red : Colors.green,
           fontWeight: FontWeight.bold,
@@ -775,7 +756,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildProfitTab() {
+  Widget _buildProfitTab(AppLocalizations l) {
     final profit = _walletData?['profit'];
     final trans = (_walletData?['wallet']?['transactions'] as List?) ?? [];
 
@@ -785,7 +766,7 @@ class _WalletScreenState extends State<WalletScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Financial Performance',
+            l.t('financial_performance'),
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -793,23 +774,23 @@ class _WalletScreenState extends State<WalletScreen> {
             ),
           ),
           SizedBox(height: 16),
-          _buildProfitSummary(profit),
+          _buildProfitSummary(profit, l),
           SizedBox(height: 24),
-          _buildSnapshotsSection(),
+          _buildSnapshotsSection(l),
           SizedBox(height: 24),
-          _buildProfitSettingsSection(),
+          _buildProfitSettingsSection(l),
           SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Transactions',
+                l.t('transactions'),
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               ElevatedButton.icon(
-                onPressed: () => _showTransactionDialog(),
+                onPressed: () => _showTransactionDialog(l),
                 icon: Icon(Icons.add, size: 18),
-                label: Text('New'),
+                label: Text(l.t('new_transaction')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
@@ -819,13 +800,13 @@ class _WalletScreenState extends State<WalletScreen> {
             ],
           ),
           SizedBox(height: 8),
-          _buildTransactionList(trans),
+          _buildTransactionList(trans, l),
         ],
       ),
     );
   }
 
-  Widget _buildSnapshotsSection() {
+  Widget _buildSnapshotsSection(AppLocalizations l) {
     final points = (_walletData?['wallet']?['pointsOnTime'] as List?) ?? [];
     final activeId = _walletData?['wallet']?['activePointOnTimeId'] as String?;
     final isAdmin = widget.targetUserId != null;
@@ -837,7 +818,7 @@ class _WalletScreenState extends State<WalletScreen> {
     return ExpansionTile(
       leading: Icon(Icons.timeline, color: Colors.indigo),
       title: Text(
-        'Balance Snapshots',
+        l.t('balance_snapshots'),
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
@@ -912,7 +893,7 @@ class _WalletScreenState extends State<WalletScreen> {
                           children: [
                             IconButton(
                               icon: Icon(Icons.edit, size: 18),
-                              onPressed: () => _showSnapshotDialog(snap: snap),
+                              onPressed: () => _showSnapshotDialog(l, snap: snap),
                             ),
                             IconButton(
                               icon: Icon(
@@ -934,9 +915,9 @@ class _WalletScreenState extends State<WalletScreen> {
           Padding(
             padding: EdgeInsets.all(12),
             child: ElevatedButton.icon(
-              onPressed: () => _showSnapshotDialog(),
+              onPressed: () => _showSnapshotDialog(l),
               icon: Icon(Icons.add, size: 18),
-              label: Text('Add Snapshot'),
+              label: Text(l.t('add_snapshot')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo,
                 foregroundColor: Colors.white,
@@ -948,13 +929,13 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildProfitSettingsSection() {
+  Widget _buildProfitSettingsSection(AppLocalizations l) {
     return ExpansionTile(
       title: Text(
-        'Revenue Calculation Mode',
+        l.t('revenue_calculation_mode'),
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      subtitle: Text('Current Value Source: ${_profitMode.toUpperCase()}'),
+      subtitle: Text('${l.t('current_value_source')}${_profitMode.toUpperCase()}'),
       leading: Icon(Icons.tune, color: Colors.deepPurple),
       children: [
         Padding(
@@ -964,17 +945,17 @@ class _WalletScreenState extends State<WalletScreen> {
               DropdownButtonFormField<String>(
                 value: _profitMode,
                 decoration: InputDecoration(
-                  labelText: 'Calculation Source',
+                  labelText: l.t('calculation_source_label'),
                   border: OutlineInputBorder(),
                 ),
                 items: [
                   DropdownMenuItem(
                     value: 'automatic',
-                    child: Text('Automatic (Wallet + Stocks)'),
+                    child: Text(l.t('auto_source')),
                   ),
                   DropdownMenuItem(
                     value: 'manual',
-                    child: Text('Manual (User Entered Value)'),
+                    child: Text(l.t('manual_source')),
                   ),
                 ],
                 onChanged: (val) => setState(() => _profitMode = val!),
@@ -984,7 +965,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 TextField(
                   controller: _manualProfitValueController,
                   decoration: InputDecoration(
-                    labelText: 'Custom Total Wallet Value (EGP)',
+                    labelText: l.t('custom_wallet_value'),
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
@@ -994,7 +975,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ElevatedButton.icon(
                 onPressed: _saveSettings,
                 icon: Icon(Icons.save),
-                label: Text('Save Profit Settings'),
+                label: Text(l.t('save_profit_settings')),
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 45),
                   backgroundColor: Colors.deepPurple,
@@ -1008,7 +989,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildProfitSummary(Map<String, dynamic>? profit) {
+  Widget _buildProfitSummary(Map<String, dynamic>? profit, AppLocalizations l) {
     if (profit == null) return SizedBox.shrink();
     final activeSnap = _walletData?['activeSnapshot'];
     final bankComp = _walletData?['bankComparison'];
@@ -1016,7 +997,7 @@ class _WalletScreenState extends State<WalletScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (activeSnap != null) _buildActiveSnapshotBanner(activeSnap),
+        if (activeSnap != null) _buildActiveSnapshotBanner(activeSnap, l),
         if (activeSnap != null) SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2,
@@ -1027,40 +1008,40 @@ class _WalletScreenState extends State<WalletScreen> {
           childAspectRatio: 1.6,
           children: [
             _infoCard(
-              'Effective Value',
+              l.t('effective_value'),
               'EGP ${_fmt(profit['walletEffectiveValue'])}',
               Icons.account_balance,
             ),
             _infoCard(
-              'Net Revenue',
+              l.t('net_revenue'),
               'EGP ${_fmt(profit['revenue'])}',
               Icons.monetization_on,
               color: (profit['revenue'] ?? 0) >= 0 ? Colors.green : Colors.red,
             ),
             _infoCard(
-              'Revenue %',
+              l.t('revenue_percent'),
               '${((profit['revenuePercentage'] ?? 0) * 100).toStringAsFixed(2)}%',
               Icons.percent,
             ),
             _infoCard(
-              'Daily Ratio',
+              l.t('daily_ratio'),
               '${profit['dailyRatio']?.toStringAsFixed(6)}',
               Icons.today,
             ),
             _infoCard(
-              'Yearly Return',
+              l.t('yearly_return'),
               '${((profit['yearlyRevenue'] ?? 0) * 100).toStringAsFixed(1)}%',
               Icons.calendar_today,
               color: Colors.orange,
             ),
             _infoCard(
-              'Total Duration',
-              '${(profit['totalDuration'] ?? 0).toInt()} Days',
+              l.t('total_duration'),
+              '${(profit['totalDuration'] ?? 0).toInt()} ${l.t('days')}',
               Icons.timer,
             ),
             if (bankComp != null) ...[
               _infoCard(
-                'Extra Revenue',
+                l.t('extra_revenue'),
                 'EGP ${_fmt(bankComp['extraRevenue'])}',
                 Icons.star,
                 color: (bankComp['extraRevenue'] ?? 0) >= 0
@@ -1068,7 +1049,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     : Colors.orange,
               ),
               _infoCard(
-                'Bank Revenue',
+                l.t('bank_revenue'),
                 'EGP ${_fmt(bankComp['bankSupposedRevenue'])}',
                 Icons.account_balance_outlined,
               ),
@@ -1079,7 +1060,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildActiveSnapshotBanner(Map<String, dynamic> snap) {
+  Widget _buildActiveSnapshotBanner(Map<String, dynamic> snap, AppLocalizations l) {
     final date = DateTime.parse(
       snap['date'],
     ).toLocal().toString().split(' ')[0];
@@ -1100,7 +1081,7 @@ class _WalletScreenState extends State<WalletScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Anchored to snapshot',
+                  l.t('anchored_to_snap'),
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.indigo.shade400,
@@ -1116,7 +1097,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   ),
                 ),
                 Text(
-                  'Transactions before this date are excluded',
+                  l.t('snap_exclusion_hint'),
                   style: TextStyle(fontSize: 10, color: Colors.indigo.shade400),
                 ),
               ],
@@ -1126,7 +1107,7 @@ class _WalletScreenState extends State<WalletScreen> {
             onPressed: () => _setActiveSnapshot(null),
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
             child: Text(
-              'Clear',
+              l.t('clear'),
               style: TextStyle(color: Colors.indigo, fontSize: 12),
             ),
           ),
@@ -1164,8 +1145,8 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildTransactionList(List trans) {
-    if (trans.isEmpty) return _emptyState('No transactions yet.');
+  Widget _buildTransactionList(List trans, AppLocalizations l) {
+    if (trans.isEmpty) return _emptyState(l.t('no_transactions'));
     // Sort transactions by date desc
     final sorted = List.from(trans)
       ..sort((a, b) => b['date'].compareTo(a['date']));
@@ -1196,7 +1177,7 @@ class _WalletScreenState extends State<WalletScreen> {
               children: [
                 IconButton(
                   icon: Icon(Icons.edit, size: 18),
-                  onPressed: () => _showTransactionDialog(t: t),
+                  onPressed: () => _showTransactionDialog(l, t: t),
                 ),
                 IconButton(
                   icon: Icon(Icons.delete, size: 18),
@@ -1210,7 +1191,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  void _showTransactionDialog({Map? t}) {
+  void _showTransactionDialog(AppLocalizations l, {Map? t}) {
     if (t != null) {
       _valController.text = t['value'].toString();
       _selectedDate = DateTime.parse(t['date']).toLocal();
@@ -1226,30 +1207,30 @@ class _WalletScreenState extends State<WalletScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocalState) {
           return AlertDialog(
-            title: Text(t == null ? 'Add Transaction' : 'Edit Transaction'),
+            title: Text(t == null ? l.t('add_transaction') : l.t('edit_transaction')),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
                   value: _targetType,
                   items: [
-                    DropdownMenuItem(value: 'deposit', child: Text('Deposit')),
+                    DropdownMenuItem(value: 'deposit', child: Text(l.t('deposit'))),
                     DropdownMenuItem(
                       value: 'withdrawal',
-                      child: Text('Withdrawal'),
+                      child: Text(l.t('withdrawal')),
                     ),
                   ],
                   onChanged: (v) => setLocalState(() => _targetType = v!),
-                  decoration: InputDecoration(labelText: 'Type'),
+                  decoration: InputDecoration(labelText: l.t('type')),
                 ),
                 TextField(
                   controller: _valController,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: 'Value (EGP)'),
+                  decoration: InputDecoration(labelText: l.t('value_egp')),
                 ),
                 ListTile(
                   title: Text(
-                    'Date: ${_selectedDate.toString().split(' ')[0]}',
+                    '${l.t('snap_date')}: ${_selectedDate.toString().split(' ')[0]}',
                   ),
                   trailing: Icon(Icons.calendar_today),
                   onTap: () async {
@@ -1267,14 +1248,14 @@ class _WalletScreenState extends State<WalletScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Cancel'),
+                child: Text(l.t('cancel')),
               ),
               ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
                   _saveTransaction(id: t?['_id']);
                 },
-                child: Text('Save'),
+                child: Text(l.t('save_all')),
               ),
             ],
           );
@@ -1301,7 +1282,7 @@ class _WalletScreenState extends State<WalletScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Total Value', style: TextStyle(color: Colors.black54)),
+                  Text(AppLocalizations.of(context).t('total_value'), style: TextStyle(color: Colors.black54)),
                   Text(
                     'EGP ${((_walletData?['totalValue'] ?? 0) as num).toStringAsFixed(2)}',
                     style: TextStyle(
@@ -1319,10 +1300,10 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildSettingsSection() {
+  Widget _buildSettingsSection(AppLocalizations l) {
     return ExpansionTile(
       title: Text(
-        'Wallet Settings',
+        l.t('wallet_settings'),
         style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
       ),
       leading: Icon(Icons.settings, color: Colors.deepPurple),
@@ -1343,10 +1324,10 @@ class _WalletScreenState extends State<WalletScreen> {
                 keyboardType: TextInputType.number,
               ),
               SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _showSensitiveSettingsDialog,
-                icon: Icon(Icons.tune, size: 18),
-                label: Text('Advanced Sensitive Settings'),
+              ElevatedButton.icon(
+                onPressed: () => _showSensitiveSettingsDialog(l),
+                icon: Icon(Icons.lock_open, size: 18),
+                label: Text(l.t('advanced_settings')),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Colors.orange.shade900,
                   side: BorderSide(color: Colors.orange.shade200),
@@ -1357,7 +1338,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ElevatedButton.icon(
                 onPressed: _saveSettings,
                 icon: Icon(Icons.save),
-                label: Text('Save Settings'),
+                label: Text(AppLocalizations.of(context).t('save_settings')),
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 45),
                   backgroundColor: Colors.deepPurple,
@@ -1371,10 +1352,10 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildAddStockSection() {
+  Widget _buildAddStockSection(AppLocalizations l) {
     return ExpansionTile(
       title: Text(
-        'Add Stock to Wallet',
+        AppLocalizations.of(context).t('add_stock_to_wallet'),
         style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
       ),
       leading: Icon(Icons.add_circle_outline, color: Colors.green),
@@ -1402,7 +1383,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     controller: ctrl,
                     focusNode: focus,
                     decoration: InputDecoration(
-                      labelText: 'Select Stock',
+                      labelText: l.t('select_stock_label'),
                       prefixIcon: Icon(Icons.search),
                       border: OutlineInputBorder(),
                     ),
@@ -1413,7 +1394,7 @@ class _WalletScreenState extends State<WalletScreen> {
               TextField(
                 controller: _qtyController,
                 decoration: InputDecoration(
-                  labelText: 'Quantity (Shares)',
+                  labelText: l.t('quantity_label'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
@@ -1422,7 +1403,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ElevatedButton.icon(
                 onPressed: _selectedStock == null ? null : _addStock,
                 icon: Icon(Icons.add),
-                label: Text('Add to Wallet'),
+                label: Text(l.t('add_to_wallet_btn')),
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 45),
                   backgroundColor: Colors.green,
@@ -1436,7 +1417,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildAnalysisList({required bool onlyPending}) {
+  Widget _buildAnalysisList({required bool onlyPending, required AppLocalizations l}) {
     if (_walletData?['analysis'] == null) return SizedBox.shrink();
 
     final List items = List.from(_walletData!['analysis']);
@@ -1476,7 +1457,7 @@ class _WalletScreenState extends State<WalletScreen> {
         : items;
 
     if (filteredItems.isEmpty && !onlyPending) {
-      return _emptyState('Your wallet is empty.');
+      return _emptyState(l.t('wallet_empty'));
     }
 
     return Column(
@@ -1504,7 +1485,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 ),
               ),
               child: InkWell(
-                onTap: () => _showManageModal(item),
+                onTap: () => _showManageModal(item, l),
                 borderRadius: BorderRadius.circular(10),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -1569,14 +1550,14 @@ class _WalletScreenState extends State<WalletScreen> {
                             ),
                             SizedBox(height: 2),
                             Text(
-                              'Qty: ${item['quantity']}  ×  EGP ${((item['currentPrice'] as num).toDouble()).toString().contains('.') ? (item['currentPrice'] as num).toDouble().toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : (item['currentPrice'] as num).toStringAsFixed(0)}',
+                              '${l.t('qty_label_short')}${item['quantity']}  ×  EGP ${((item['currentPrice'] as num).toDouble()).toString().contains('.') ? (item['currentPrice'] as num).toDouble().toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : (item['currentPrice'] as num).toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.black87,
                               ),
                             ),
                             Text(
-                              'Real: EGP ${(item['realMarketValue'] as num).toStringAsFixed(0)}  →  Supposed: EGP ${(item['supposedValue'] as num).toStringAsFixed(0)}',
+                              '${l.t('real_value_label')}${(item['realMarketValue'] as num).toStringAsFixed(0)}${l.t('supposed_value_label')}${(item['supposedValue'] as num).toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 10,
                                 color: Colors.black54,
@@ -1605,7 +1586,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  suggestion,
+                                  l.t('suggestion_${suggestion.toLowerCase()}'),
                                   style: TextStyle(
                                     color: _suggestionColor(suggestion),
                                     fontWeight: FontWeight.bold,
@@ -1643,7 +1624,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                 ),
                                 child: Text(
                                   _showSharesTickers.contains(item['ticker'])
-                                      ? '${item['gapShares']} sh.'
+                                      ? '${item['gapShares']}${l.t('shares_suffix')}'
                                       : 'EGP ${(item['gap'] as num).toStringAsFixed(0)}',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
@@ -1729,7 +1710,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  void _showManageModal(Map<String, dynamic> item) {
+  void _showManageModal(Map<String, dynamic> item, AppLocalizations l) {
     final qtyController = TextEditingController(
       text: item['quantity'].toString(),
     );
@@ -1801,7 +1782,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     targetUserId: widget.targetUserId,
                   );
                   await _loadData();
-                  _checkShowHint();
+                  if (mounted) _checkShowHint(l);
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -1809,7 +1790,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 foregroundColor: Colors.white,
                 minimumSize: Size(double.infinity, 50),
               ),
-              child: Text('Update Stock Info'),
+              child: Text(l.t('update_stock_info')),
             ),
             SizedBox(height: 12),
             TextButton.icon(
@@ -1819,7 +1800,7 @@ class _WalletScreenState extends State<WalletScreen> {
               },
               icon: Icon(Icons.delete, color: Colors.red),
               label: Text(
-                'Remove From Wallet',
+                l.t('remove_from_wallet'),
                 style: TextStyle(color: Colors.red),
               ),
               style: TextButton.styleFrom(
@@ -1833,7 +1814,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  void _showBulkPriceDialog() {
+  void _showBulkPriceDialog(AppLocalizations l) {
     if (_walletData?['analysis'] == null) return;
     final List items = _walletData!['analysis'];
     final controllers = <String, TextEditingController>{};
@@ -1902,7 +1883,7 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  void _showSensitiveSettingsDialog() {
+  void _showSensitiveSettingsDialog(AppLocalizations l) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1910,7 +1891,7 @@ class _WalletScreenState extends State<WalletScreen> {
           children: [
             Icon(Icons.lock_outline, color: Colors.orange),
             SizedBox(width: 8),
-            Text('Sensitive Settings', style: TextStyle(fontSize: 18)),
+            Text(l.t('sensitive_settings'), style: TextStyle(fontSize: 18)),
           ],
         ),
         content: SingleChildScrollView(
@@ -1918,14 +1899,14 @@ class _WalletScreenState extends State<WalletScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'These parameters affect the core rebalancing algorithm. Only change them if you understand the mathematical implications.',
+                l.t('sensitive_settings_hint'),
                 style: TextStyle(fontSize: 12, color: Colors.black54),
               ),
               SizedBox(height: 16),
               TextField(
                 controller: _factorController,
                 decoration: InputDecoration(
-                  labelText: 'Matching Factor (Score Weight)',
+                  labelText: l.t('matching_factor'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
@@ -1934,7 +1915,7 @@ class _WalletScreenState extends State<WalletScreen> {
               TextField(
                 controller: _liquidityController,
                 decoration: InputDecoration(
-                  labelText: 'Liquidity Factor (Cash %)',
+                  labelText: l.t('liquidity_factor_label'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
@@ -1943,7 +1924,7 @@ class _WalletScreenState extends State<WalletScreen> {
               TextField(
                 controller: _thresholdController,
                 decoration: InputDecoration(
-                  labelText: 'Rebalancing Factor (Threshold)',
+                  labelText: l.t('rebalancing_factor'),
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
@@ -1966,19 +1947,19 @@ class _WalletScreenState extends State<WalletScreen> {
                   await showDialog(
                     context: context,
                     builder: (innerCtx) => AlertDialog(
-                      title: Text('Are you sure?'),
+                      title: Text(l.t('are_you_sure')),
                       content: Text(
-                        'Those data are sensitive and needs experience to be determined are you sure about changing?',
+                        l.t('sensitive_confirm_body'),
                       ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(innerCtx, false),
-                          child: Text('No'),
+                          child: Text(l.t('no')),
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(innerCtx, true),
                           child: Text(
-                            'Yes',
+                            l.t('yes'),
                             style: TextStyle(
                               color: Colors.red,
                               fontWeight: FontWeight.bold,
@@ -1995,7 +1976,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 _saveSettings();
               }
             },
-            child: Text('Save Changes'),
+            child: Text(l.t('save_changes')),
           ),
         ],
       ),

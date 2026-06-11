@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/stock.dart';
 import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 
 class MatchScreen extends StatefulWidget {
   final Stock stock;
@@ -25,34 +26,37 @@ class _MatchScreenState extends State<MatchScreen> {
   }
 
   void _search() async {
+    final l = AppLocalizations.of(context);
     setState(() => isLoading = true);
     try {
       final results = await apiService.searchArabicStock(_searchController.text);
-      setState(() => matches = results);
+      if (mounted) setState(() => matches = results);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Search failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('search_failed')}: $e')));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   void _match(String url) async {
+    final l = AppLocalizations.of(context);
     setState(() => isLoading = true);
     try {
       await apiService.matchStock(widget.stock.ticker, url);
-      Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Matching failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('match_failed')}: $e')));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Match: ${widget.stock.ticker}'),
+        title: Text('${l.t('match_title_prefix')} ${widget.stock.ticker}'),
         backgroundColor: Colors.deepPurple,
       ),
       body: Column(
@@ -62,7 +66,7 @@ class _MatchScreenState extends State<MatchScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                labelText: 'Search ArabicStock.com',
+                labelText: l.t('search_arabicstock_hint'),
                 suffixIcon: IconButton(icon: Icon(Icons.search), onPressed: _search),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
               ),

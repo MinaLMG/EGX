@@ -23,6 +23,10 @@ exports.protect = async (req, res, next) => {
             return res.status(403).json({ message: 'Account pending approval' });
         }
 
+        if (req.user.isDeleted) {
+            return res.status(403).json({ message: 'This account has been deleted' });
+        }
+
         next();
     } catch (err) {
         return res.status(401).json({ message: 'Not authorized to access this route' });

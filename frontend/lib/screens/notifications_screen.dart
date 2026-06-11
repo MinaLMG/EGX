@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/notification_api_service.dart';
+import '../l10n/app_localizations.dart';
 
 class NotificationsScreen extends StatefulWidget {
   @override
@@ -19,20 +20,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _load() async {
     final items = await _service.getNotifications();
-    setState(() {
-      _notifications = items;
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _notifications = items;
+        _loading = false;
+      });
+    }
   }
 
-  String _timeAgo(String isoDate) {
+  String _timeAgo(String isoDate, AppLocalizations l) {
     try {
       final dt = DateTime.parse(isoDate).toLocal();
       final diff = DateTime.now().difference(dt);
-      if (diff.inMinutes < 1) return 'الآن';
-      if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-      if (diff.inHours < 24) return 'منذ ${diff.inHours} ساعة';
-      return 'منذ ${diff.inDays} يوم';
+      if (diff.inMinutes < 1) return l.t('just_now');
+      if (diff.inMinutes < 60) return '${diff.inMinutes} ${l.t('ago_min')}';
+      if (diff.inHours < 24) return '${diff.inHours} ${l.t('ago_hour')}';
+      return '${diff.inDays} ${l.t('ago_day')}';
     } catch (_) {
       return '';
     }
@@ -40,12 +43,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF5F0FF),
       appBar: AppBar(
-        title: const Text(
-          '🔔 الإشعارات',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        title: Text(
+          '🔔 ${l.t('notifications')}',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
@@ -54,20 +58,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: Colors.deepPurple))
           : _notifications.isEmpty
-              ? _buildEmpty()
+              ? _buildEmpty(l)
               : RefreshIndicator(
                   onRefresh: _load,
                   color: Colors.deepPurple,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _notifications.length,
-                    itemBuilder: (ctx, i) => _buildCard(_notifications[i]),
+                    itemBuilder: (ctx, i) => _buildCard(_notifications[i], l),
                   ),
                 ),
     );
   }
 
-  Widget _buildEmpty() {
+  Widget _buildEmpty(AppLocalizations l) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -75,20 +79,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Icon(Icons.notifications_none, size: 80, color: Colors.deepPurple.withOpacity(0.3)),
           const SizedBox(height: 16),
           Text(
-            'لا توجد إشعارات بعد',
+            l.t('no_notifications'),
             style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
-          Text(
-            'هنعلمك لما يكون فيه اكشن في البورصة 😄',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              l.t('notify_market_action'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCard(Map<String, dynamic> notification) {
+  Widget _buildCard(Map<String, dynamic> notification, AppLocalizations l) {
     final bool seen = notification['seen'] ?? true;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -128,20 +136,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             fontWeight: seen ? FontWeight.normal : FontWeight.bold,
             fontSize: 15,
           ),
-          textDirection: TextDirection.rtl,
         ),
         subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
             Text(
               notification['content'] ?? '',
               style: const TextStyle(fontSize: 13),
-              textDirection: TextDirection.rtl,
             ),
             const SizedBox(height: 6),
             Text(
-              _timeAgo(notification['createdAt'] ?? ''),
+              _timeAgo(notification['createdAt'] ?? '', l),
               style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
             ),
           ],

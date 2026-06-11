@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 import 'wallet_screen.dart';
 
 class AdminUsersScreen extends StatefulWidget {
@@ -19,38 +20,47 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   Future<void> _fetchUsers() async {
+    final l = AppLocalizations.of(context);
     setState(() => _isLoading = true);
     try {
       final users = await _authService.getUsers();
-      setState(() {
-        _users = users;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _users = users;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _updateStatus(String userId, String status) async {
+    final l = AppLocalizations.of(context);
     try {
       await _authService.updateUserStatus(userId, status);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('User $status successfully')));
-      _fetchUsers();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.t('status_success'))));
+        _fetchUsers();
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     }
   }
 
   Future<void> _resetPassword(String userId) async {
+    final l = AppLocalizations.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Reset Password?'),
-        content: Text('This will set the password to "00000000". Proceed?'),
+        title: Text(l.t('reset_confirm_title')),
+        content: Text(l.t('reset_confirm_body')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Reset', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.t('cancel'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l.t('reset_password'), style: const TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -59,21 +69,22 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
     try {
       await _authService.resetUserPassword(userId);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Password reset to 00000000')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.t('reset_success'))));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('User Management'),
+        title: Text(l.t('admin_users')),
         backgroundColor: Colors.deepPurple,
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _fetchUsers,
               child: ListView.builder(
@@ -84,29 +95,29 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   final isActive = user['status'] == 'active';
 
                   return Card(
-                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: ListTile(
-                      title: Text(user['name'] ?? 'Unknown', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${user['email']}\nRole: ${user['role']} | Status: ${user['status']}'),
+                      title: Text(user['name'] ?? l.t('no_name'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('${user['email']}\n${l.t('role')}: ${user['role']} | ${l.t('status')}: ${user['status']}'),
                       isThreeLine: true,
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (isPending) ...[
                             IconButton(
-                              icon: Icon(Icons.check_circle, color: Colors.green),
+                              icon: const Icon(Icons.check_circle, color: Colors.green),
                               onPressed: () => _updateStatus(user['_id'], 'active'),
-                              tooltip: 'Approve',
+                              tooltip: l.t('approve'),
                             ),
                             IconButton(
-                              icon: Icon(Icons.cancel, color: Colors.red),
+                              icon: const Icon(Icons.cancel, color: Colors.red),
                               onPressed: () => _updateStatus(user['_id'], 'rejected'),
-                              tooltip: 'Reject',
+                              tooltip: l.t('reject'),
                             ),
                           ],
-                          if (isActive) 
+                          if (isActive)
                             IconButton(
-                              icon: Icon(Icons.account_balance_wallet, color: Colors.deepPurple),
+                              icon: const Icon(Icons.account_balance_wallet, color: Colors.deepPurple),
                               onPressed: () {
                                 Navigator.push(
                                   context,
@@ -115,19 +126,19 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                   ),
                                 );
                               },
-                              tooltip: 'Simulate Wallet',
+                              tooltip: l.t('simulate_wallet'),
                             ),
-                          if (isActive) 
+                          if (isActive)
                             IconButton(
-                              icon: Icon(Icons.lock_reset, color: Colors.blue),
+                              icon: const Icon(Icons.lock_reset, color: Colors.blue),
                               onPressed: () => _resetPassword(user['_id']),
-                              tooltip: 'Reset Password',
+                              tooltip: l.t('reset_password'),
                             ),
                           if (isActive && user['role'] != 'admin')
                             IconButton(
-                              icon: Icon(Icons.block, color: Colors.orange),
+                              icon: const Icon(Icons.block, color: Colors.orange),
                               onPressed: () => _updateStatus(user['_id'], 'pending'),
-                              tooltip: 'Deactivate',
+                              tooltip: l.t('deactivate'),
                             ),
                         ],
                       ),

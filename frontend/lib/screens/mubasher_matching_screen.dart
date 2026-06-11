@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/mubasher_service.dart';
+import '../l10n/app_localizations.dart';
 
 class MubasherMatchingScreen extends StatefulWidget {
   @override
@@ -32,7 +33,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading orphans: $e')),
+        SnackBar(content: Text('${AppLocalizations.of(context).t('error_loading_orphans')}: $e')),
       );
     } finally {
       setState(() => _isLoading = false);
@@ -45,7 +46,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
       await _service.triggerScrape();
       await _loadData();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Market data refreshed successfully')),
+        SnackBar(content: Text(AppLocalizations.of(context).t('market_data_refreshed'))),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -62,7 +63,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
     try {
       await _service.createMatch(_selectedStock!, _selectedPrice!);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Linked $_selectedStock to $_selectedPrice')),
+        SnackBar(content: Text(AppLocalizations.of(context).t('linked_stocks_success'))),
       );
       await _loadData();
     } catch (e) {
@@ -75,9 +76,10 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Mubasher Matching Wizard'),
+        title: Text(l.t('mubasher_matching_wizard')),
         backgroundColor: Colors.blueGrey,
         actions: [
           IconButton(
@@ -86,7 +88,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
           ),
           IconButton(
             icon: Icon(Icons.flash_on),
-            tooltip: 'Trigger Market Scrape',
+            tooltip: l.t('trigger_market_scrape'),
             onPressed: _isLoading ? null : _triggerManualUpdate,
           ),
         ],
@@ -103,9 +105,9 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
                       Expanded(
                         child: Column(
                           children: [
-                            Text('Selected Ticker', style: TextStyle(color: Colors.grey)),
+                            Text(l.t('selected_ticker'), style: TextStyle(color: Colors.grey)),
                             Text(
-                              _selectedStock ?? 'None',
+                              _selectedStock ?? l.t('none'),
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                             ),
                           ],
@@ -115,10 +117,10 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
                       Expanded(
                         child: Column(
                           children: [
-                            Text('Selected Mubasher Name', style: TextStyle(color: Colors.grey)),
+                            Text(l.t('selected_mubasher_name'), style: TextStyle(color: Colors.grey)),
                             Text(
-                              _selectedPrice ?? 'None',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                              _selectedPrice ?? l.t('none'),
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -135,7 +137,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
                         child: Container(
                           decoration: BoxDecoration(border: Border(right: BorderSide(color: Colors.grey.shade300))),
                           child: _buildList(
-                            'Unpriced Tickers',
+                            l.t('unpriced_tickers'),
                             _unmatchedStocks,
                             _selectedStock,
                             (val) => setState(() => _selectedStock = val),
@@ -146,7 +148,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
                       // Prices List
                       Expanded(
                         child: _buildList(
-                          'Unmatched Prices',
+                          l.t('unmatched_prices'),
                           _unmatchedPrices,
                           _selectedPrice,
                           (val) => setState(() => _selectedPrice = val),

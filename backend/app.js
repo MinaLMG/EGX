@@ -31,6 +31,8 @@ app.use('/api/wallet', require('./routes/walletRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/cron', require('./routes/cronRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/profile', require('./routes/profileRoutes'));
+app.use('/api/faq', require('./routes/faqRoutes'));
 
 // Health Check
 app.get('/', (req, res) => {

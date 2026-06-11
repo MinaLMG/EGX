@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/stock.dart';
 import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 
 class MatchWizardScreen extends StatefulWidget {
   @override
@@ -24,31 +25,33 @@ class _MatchWizardScreenState extends State<MatchWizardScreen> {
   }
 
   void _loadUnmatchedStocks() async {
+    final l = AppLocalizations.of(context);
     setState(() => isLoading = true);
     try {
       final allStocks = await apiService.fetchStocks();
-      setState(() {
-        unmatchedStocks = allStocks
-            .where(
-              (s) =>
-                  s.arabicStockGetter == null || s.arabicStockGetter!.isEmpty,
-            )
-            .toList();
-        if (unmatchedStocks.isNotEmpty) {
-          _searchController.text = unmatchedStocks[currentIndex].ticker;
-          _performSearch();
-        }
-      });
+      if (mounted) {
+        setState(() {
+          unmatchedStocks = allStocks
+              .where(
+                (s) =>
+                    s.arabicStockGetter == null || s.arabicStockGetter!.isEmpty,
+              )
+              .toList();
+          if (unmatchedStocks.isNotEmpty) {
+            _searchController.text = unmatchedStocks[currentIndex].ticker;
+            _performSearch();
+          }
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load stocks: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     } finally {
-      setState(() => isLoading = false);
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   void _performSearch() async {
+    final l = AppLocalizations.of(context);
     if (unmatchedStocks.isEmpty) return;
 
     setState(() => isSearching = true);
@@ -56,51 +59,49 @@ class _MatchWizardScreenState extends State<MatchWizardScreen> {
       final results = await apiService.searchArabicStock(
         _searchController.text,
       );
-      setState(() => searchResults = results);
+      if (mounted) setState(() => searchResults = results);
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Search failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     } finally {
-      setState(() => isSearching = false);
+      if (mounted) setState(() => isSearching = false);
     }
   }
 
   void _match(String url) async {
+    final l = AppLocalizations.of(context);
     setState(() => isSearching = true);
     try {
       await apiService.matchStock(unmatchedStocks[currentIndex].ticker, url);
 
-      if (currentIndex < unmatchedStocks.length - 1) {
-        setState(() {
-          currentIndex++;
-          _searchController.text = unmatchedStocks[currentIndex].ticker;
-          searchResults = [];
-        });
-        _performSearch();
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('All stocks matched!')));
-        Navigator.pop(context);
+      if (mounted) {
+        if (currentIndex < unmatchedStocks.length - 1) {
+          setState(() {
+            currentIndex++;
+            _searchController.text = unmatchedStocks[currentIndex].ticker;
+            searchResults = [];
+          });
+          _performSearch();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.t('match_success'))));
+          Navigator.pop(context);
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Match failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     } finally {
-      setState(() => isSearching = false);
+      if (mounted) setState(() => isSearching = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     if (isLoading)
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (unmatchedStocks.isEmpty)
       return Scaffold(
-        appBar: AppBar(title: Text('Wizard')),
-        body: Center(child: Text('No unmatched stocks found!')),
+        appBar: AppBar(title: Text(l.t('wizard'))),
+        body: Center(child: Text(l.t('no_unmatched'))),
       );
 
     final currentStock = unmatchedStocks[currentIndex];
@@ -108,31 +109,31 @@ class _MatchWizardScreenState extends State<MatchWizardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'ArabicStock Matching Wizard (${currentIndex + 1}/${unmatchedStocks.length})',
+          '${l.t('admin_matching_wizard')} (${currentIndex + 1}/${unmatchedStocks.length})',
         ),
         backgroundColor: Colors.orange.shade700,
       ),
       body: Column(
         children: [
           Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             color: Colors.orange.shade50,
             child: Row(
               children: [
                 CircleAvatar(child: Text(currentStock.ticker[0])),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         currentStock.ticker,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
                         ),
                       ),
-                      Text(currentStock.name ?? 'No Name'),
+                      Text(currentStock.name ?? l.t('no_name')),
                     ],
                   ),
                 ),
@@ -150,7 +151,7 @@ class _MatchWizardScreenState extends State<MatchWizardScreen> {
                       Navigator.pop(context);
                     }
                   },
-                  child: Text('Skip'),
+                  child: Text(l.t('skip')),
                 ),
               ],
             ),
@@ -160,17 +161,17 @@ class _MatchWizardScreenState extends State<MatchWizardScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                labelText: 'Search for match on ArabicStock',
+                labelText: l.t('search_match'),
                 suffixIcon: IconButton(
-                  icon: Icon(Icons.search),
+                  icon: const Icon(Icons.search),
                   onPressed: _performSearch,
                 ),
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
               onSubmitted: (_) => _performSearch(),
             ),
           ),
-          if (isSearching) LinearProgressIndicator(),
+          if (isSearching) const LinearProgressIndicator(),
           Expanded(
             child: ListView.builder(
               itemCount: searchResults.length,
@@ -180,9 +181,9 @@ class _MatchWizardScreenState extends State<MatchWizardScreen> {
                   title: Text(match.title),
                   subtitle: Text(
                     match.link,
-                    style: TextStyle(color: Colors.blue, fontSize: 11),
+                    style: const TextStyle(color: Colors.blue, fontSize: 11),
                   ),
-                  trailing: Icon(Icons.link),
+                  trailing: const Icon(Icons.link),
                   onTap: () => _match(match.link),
                 );
               },

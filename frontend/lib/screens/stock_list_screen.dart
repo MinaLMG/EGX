@@ -5,6 +5,7 @@ import '../models/stock.dart';
 import '../services/api_service.dart';
 import '../services/wallet_service.dart';
 import '../services/auth_service.dart';
+import '../l10n/app_localizations.dart';
 import 'match_screen.dart';
 import 'mubasher_matching_screen.dart';
 import 'admin_stock_matrix_screen.dart';
@@ -67,10 +68,11 @@ class _StockListScreenState extends State<StockListScreen> {
   }
 
   Future<void> _exportToExcel() async {
+    final l = AppLocalizations.of(context);
     try {
       final bytes = await apiService.exportStocksExcel();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Excel generated. Select location to save.')),
+        const SnackBar(content: Text('Excel generated. Select location to save.')),
       );
 
       String? outputPath = await FilePicker.saveFile(
@@ -81,20 +83,17 @@ class _StockListScreenState extends State<StockListScreen> {
         bytes: Uint8List.fromList(bytes),
       );
 
-      if (outputPath != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('File saved to $outputPath')));
+      if (outputPath != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('File saved to $outputPath')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Export error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: _isSearching
@@ -102,16 +101,16 @@ class _StockListScreenState extends State<StockListScreen> {
                 controller: _searchController,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Search ticker or name...',
-                  hintStyle: TextStyle(color: Colors.white70),
+                  hintText: l.t('search_hint'),
+                  hintStyle: const TextStyle(color: Colors.white70),
                   border: InputBorder.none,
                 ),
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: const TextStyle(color: Colors.white, fontSize: 18),
                 onChanged: (val) => setState(() => _searchQuery = val),
               )
             : Text(
-                'EGX Fair Values',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                l.t('market_data'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
         backgroundColor: Colors.deepPurple,
         elevation: 0,
@@ -132,8 +131,8 @@ class _StockListScreenState extends State<StockListScreen> {
           ),
           if (_isAdmin)
             IconButton(
-              icon: Icon(Icons.link),
-              tooltip: 'Mubasher Matching',
+              icon: const Icon(Icons.link),
+              tooltip: l.t('mubasher_matching'),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -143,8 +142,8 @@ class _StockListScreenState extends State<StockListScreen> {
             ),
           if (_isAdmin)
             IconButton(
-              icon: Icon(Icons.grid_on),
-              tooltip: 'Market Matrix',
+              icon: const Icon(Icons.grid_on),
+              tooltip: l.t('market_matrix'),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -154,21 +153,21 @@ class _StockListScreenState extends State<StockListScreen> {
             ),
           if (_isAdmin)
             IconButton(
-              icon: Icon(Icons.add_box),
-              tooltip: 'Add New Ticker',
+              icon: const Icon(Icons.add_box),
+              tooltip: l.t('add_ticker'),
               onPressed: _showAddStockDialog,
             ),
           if (_isAdmin)
             IconButton(
-              icon: Icon(Icons.description), // Excel icon
+              icon: const Icon(Icons.description), 
               tooltip: 'Export generated_fair.xlsx',
               onPressed: _exportToExcel,
             ),
-          IconButton(icon: Icon(Icons.refresh), onPressed: _refresh),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
         ],
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -183,11 +182,11 @@ class _StockListScreenState extends State<StockListScreen> {
                 future: futureStocks,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
+                    return const Center(child: CircularProgressIndicator());
                   } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
+                    return Center(child: Text('${l.t('error')}: ${snapshot.error}'));
                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(child: Text('No stocks found'));
+                    return Center(child: Text(l.t('no_stocks_found')));
                   }
 
                   final List<Stock> sortedStocks = snapshot.data!.where((s) {
@@ -197,7 +196,7 @@ class _StockListScreenState extends State<StockListScreen> {
                   }).toList();
 
                   return ListView.builder(
-                    padding: EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16),
                     itemCount: sortedStocks.length,
                     itemBuilder: (context, index) {
                       final stock = sortedStocks[index];
@@ -208,11 +207,11 @@ class _StockListScreenState extends State<StockListScreen> {
 
                       return Card(
                         color: isInWallet ? Colors.amber.shade50 : Colors.white,
-                        margin: EdgeInsets.only(bottom: 16),
+                        margin: const EdgeInsets.only(bottom: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
                           side: isInWallet
-                              ? BorderSide(color: Colors.amber, width: 2)
+                              ? const BorderSide(color: Colors.amber, width: 2)
                               : BorderSide.none,
                         ),
                         elevation: isInWallet ? 8 : 4,
@@ -233,15 +232,15 @@ class _StockListScreenState extends State<StockListScreen> {
                             children: [
                               Text(
                                 stock.ticker,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
                                 ),
                               ),
                               if (isInWallet) ...[
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Container(
-                                  padding: EdgeInsets.symmetric(
+                                  padding: const EdgeInsets.symmetric(
                                     horizontal: 6,
                                     vertical: 2,
                                   ),
@@ -249,7 +248,7 @@ class _StockListScreenState extends State<StockListScreen> {
                                     color: Colors.amber,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Text(
+                                  child: const Text(
                                     'WALLET',
                                     style: TextStyle(
                                       color: Colors.white,
@@ -267,7 +266,7 @@ class _StockListScreenState extends State<StockListScreen> {
                             children: [
                               Text(
                                 stock.totalScore.toStringAsFixed(2),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.deepPurple,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -288,45 +287,41 @@ class _StockListScreenState extends State<StockListScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildDataRow('Current Price:',
+                                  _buildDataRow('${l.t('current_price')}:',
                                       '${stock.price} EGP', Colors.black),
                                   if (stock.arabicStockFairValue != null)
-                                    _buildDataRow('Fair Value:',
+                                    _buildDataRow('${l.t('fair_value')}:',
                                         '${stock.arabicStockFairValue} EGP', Colors.blue),
                                   if (stock.arabicStockAnalyzersFairValue !=
                                       null)
                                     _buildDataRow(
-                                        'Analyzers Fair Value:',
+                                        '${l.t('analyzers_fair_value')}:',
                                         '${stock.arabicStockAnalyzersFairValue} EGP',
                                         Colors.teal),
-                                  Divider(height: 32),
+                                  const Divider(height: 32),
                                   Text(
-                                    'Recommendation Scores',
-                                    style: TextStyle(
+                                    l.t('recommendation_scores'),
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.deepPurple,
                                     ),
                                   ),
-                                  SizedBox(height: 8),
-                                  _buildScoreRow(
-                                      'BF Pot.', stock.bfScore),
-                                  _buildScoreRow('Fundamental',
-                                      stock.fundamentalScore),
-                                  _buildScoreRow('Technical',
-                                      stock.technicalScore),
-                                  _buildScoreRow(
-                                      'ArabStock', stock.arabstockScore),
-                                  _buildScoreRow('RFP Score', stock.rfpScore),
-                                  _buildScoreRow('RSP Score', stock.rspScore),
-                                  SizedBox(height: 16),
+                                  const SizedBox(height: 8),
+                                  _buildScoreRow('BF Pot.', stock.bfScore),
+                                  _buildScoreRow(l.t('fundamental'), stock.fundamentalScore),
+                                  _buildScoreRow(l.t('technical'), stock.technicalScore),
+                                  _buildScoreRow('ArabStock', stock.arabstockScore),
+                                  _buildScoreRow(l.t('rfp'), stock.rfpScore),
+                                  _buildScoreRow(l.t('rsp'), stock.rspScore),
+                                  const SizedBox(height: 16),
                                   if (_isAdmin)
                                     Center(
                                       child: ElevatedButton.icon(
-                                        icon: Icon(Icons.link),
+                                        icon: const Icon(Icons.link),
                                         label: Text(
                                           isMatched
-                                              ? 'Change Match'
-                                              : 'Match ArabicStock',
+                                              ? l.t('change_match')
+                                              : l.t('match_arabicstock'),
                                         ),
                                         onPressed: () async {
                                           await Navigator.push(
@@ -365,6 +360,7 @@ class _StockListScreenState extends State<StockListScreen> {
   }
 
   void _showAddStockDialog() {
+    final l = AppLocalizations.of(context);
     final _tickerController = TextEditingController();
     final _nameController = TextEditingController();
     final _priceController = TextEditingController();
@@ -372,13 +368,13 @@ class _StockListScreenState extends State<StockListScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Add New Ticker'),
+        title: Text(l.t('add_ticker')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _tickerController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Ticker (e.g. ABUK)',
                 hintText: 'Uppercase ticker',
               ),
@@ -387,13 +383,13 @@ class _StockListScreenState extends State<StockListScreen> {
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
-                labelText: 'Company Name',
+                labelText: l.t('company_name'),
               ),
             ),
             TextField(
               controller: _priceController,
               decoration: InputDecoration(
-                labelText: 'Initial Price (EGP)',
+                labelText: l.t('initial_price'),
               ),
               keyboardType: TextInputType.number,
             ),
@@ -401,7 +397,7 @@ class _StockListScreenState extends State<StockListScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: Text('Cancel')),
+              onPressed: () => Navigator.pop(ctx), child: Text(l.t('cancel'))),
           ElevatedButton(
             onPressed: () async {
               try {
@@ -412,17 +408,20 @@ class _StockListScreenState extends State<StockListScreen> {
                 if (ticker.isEmpty) throw 'Ticker cannot be empty';
 
                 await apiService.createStock(ticker, name, price);
-                Navigator.pop(ctx);
-                _refresh();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Stock $ticker added successfully')),
-                );
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  _refresh();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l.t('stock_added'))),
+                  );
+                }
               } catch (e) {
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('Error: $e')));
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l.t('error')}: $e')));
+                }
               }
             },
-            child: Text('Create'),
+            child: Text(l.t('create')),
           ),
         ],
       ),
@@ -435,7 +434,7 @@ class _StockListScreenState extends State<StockListScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey)),
+          Text(label, style: const TextStyle(color: Colors.grey)),
           Text(
             value,
             style: TextStyle(fontWeight: FontWeight.bold, color: valueColor),
@@ -451,10 +450,10 @@ class _StockListScreenState extends State<StockListScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
           Text(
             value.toStringAsFixed(2),
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
         ],
       ),

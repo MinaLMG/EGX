@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../l10n/app_localizations.dart';
 
 class AdminStockMatrixScreen extends StatefulWidget {
   @override
@@ -83,9 +84,10 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('Market Matrix (Admin)'),
+        title: Text(l.t('market_matrix_admin')),
         backgroundColor: Colors.deepPurple,
         actions: [
           IconButton(icon: Icon(Icons.refresh), onPressed: _loadData),
@@ -95,10 +97,10 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
           ? Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                _buildFilters(),
+                _buildFilters(l),
                 Expanded(
                   child: _filteredMatrix.isEmpty
-                      ? Center(child: Text('No stocks match the filters'))
+                      ? Center(child: Text(l.t('no_stocks_match_filters')))
                       : SingleChildScrollView(
                           scrollDirection: Axis.vertical,
                           child: SingleChildScrollView(
@@ -110,11 +112,11 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
                                   Colors.deepPurple.shade50),
                               columns: [
                                 DataColumn(
-                                  label: Text('Ticker'),
+                                  label: Text(l.t('ticker_label')),
                                   onSort: (index, asc) => _sortData('ticker', asc),
                                 ),
                                 DataColumn(
-                                  label: Text('Score'),
+                                  label: Text(l.t('score_label')),
                                   numeric: true,
                                   onSort: (index, asc) => _sortData('score', asc),
                                 ),
@@ -126,7 +128,7 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
                                   );
                                 }).toList(),
                                 DataColumn(
-                                  label: Text('Any?'),
+                                  label: Text(l.t('any_participation')),
                                   onSort: (index, asc) =>
                                       _sortData('participation', asc),
                                 ),
@@ -187,7 +189,7 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
     return null;
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters(AppLocalizations l) {
     return Padding(
       padding: const EdgeInsets.all(12.0),
       child: Row(
@@ -195,7 +197,7 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
           Expanded(
             child: TextField(
               decoration: InputDecoration(
-                labelText: 'Filter Ticker',
+                labelText: l.t('filter_ticker'),
                 hintText: 'e.g. ABUK',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(
@@ -210,7 +212,7 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
           ),
           SizedBox(width: 16),
           FilterChip(
-            label: Text('In Any Wallet'),
+            label: Text(l.t('in_any_wallet')),
             selected: _showOnlyInWallets,
             selectedColor: Colors.deepPurple.shade100,
             onSelected: (val) {
