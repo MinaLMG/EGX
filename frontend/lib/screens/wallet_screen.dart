@@ -409,7 +409,6 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(title, style: TextStyle(fontSize: 18)),
-          backgroundColor: Colors.deepPurple,
           bottom: TabBar(
             isScrollable: true,
             tabs: [
@@ -464,7 +463,6 @@ class _WalletScreenState extends State<WalletScreen> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
             ),
           ),
           SizedBox(height: 8),
@@ -510,7 +508,7 @@ class _WalletScreenState extends State<WalletScreen> {
           ),
           Text(
             '${l.t('stocks_rebalancing_hint_prefix')}${((_walletData?['wallet']?['rebalancingThreshold'] ?? 0.1) * 100).toStringAsFixed(0)}${l.t('stocks_rebalancing_hint_suffix')}',
-            style: TextStyle(color: Colors.black54, fontSize: 13),
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54, fontSize: 13),
           ),
           SizedBox(height: 16),
           if (hasActions)
@@ -532,7 +530,6 @@ class _WalletScreenState extends State<WalletScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
-                        color: Colors.black87,
                       ),
                     ),
                     Text(
@@ -727,13 +724,13 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.black87, fontSize: 14)),
+          Text(label, style: TextStyle(fontSize: 14)),
           Text(
             value,
             style: TextStyle(
               fontSize: isPrimary ? 18 : 14,
               fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
-              color: isPrimary ? Colors.black87 : Colors.black54,
+              color: isPrimary ? null : Theme.of(context).textTheme.bodySmall?.color,
             ),
           ),
         ],
@@ -1271,9 +1268,14 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildSummaryCard() {
     if (_walletData?['totalValue'] == null) return SizedBox.shrink();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
-      color: Colors.deepPurple.shade50,
-      elevation: 2,
+      color: isDark ? Colors.deepPurple.withOpacity(0.15) : Colors.deepPurple.shade50,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.deepPurple.withOpacity(0.3)),
+      ),
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Row(
@@ -1282,13 +1284,16 @@ class _WalletScreenState extends State<WalletScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(AppLocalizations.of(context).t('total_value'), style: TextStyle(color: Colors.black54)),
+                  Text(
+                    AppLocalizations.of(context).t('total_value'),
+                    style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+                  ),
                   Text(
                     'EGP ${((_walletData?['totalValue'] ?? 0) as num).toStringAsFixed(2)}',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: isDark ? Color(0xFFCE93D8) : Colors.deepPurple,
                     ),
                   ),
                 ],
@@ -1304,7 +1309,7 @@ class _WalletScreenState extends State<WalletScreen> {
     return ExpansionTile(
       title: Text(
         l.t('wallet_settings'),
-        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+        style: TextStyle(fontWeight: FontWeight.bold),
       ),
       leading: Icon(Icons.settings, color: Colors.deepPurple),
       children: [
@@ -1356,7 +1361,7 @@ class _WalletScreenState extends State<WalletScreen> {
     return ExpansionTile(
       title: Text(
         AppLocalizations.of(context).t('add_stock_to_wallet'),
-        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+        style: TextStyle(fontWeight: FontWeight.bold),
       ),
       leading: Icon(Icons.add_circle_outline, color: Colors.green),
       children: [
@@ -1418,6 +1423,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildAnalysisList({required bool onlyPending, required AppLocalizations l}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (_walletData?['analysis'] == null) return SizedBox.shrink();
 
     final List items = List.from(_walletData!['analysis']);
@@ -1524,7 +1530,6 @@ class _WalletScreenState extends State<WalletScreen> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
-                                    color: Colors.black87,
                                   ),
                                 ),
                                 SizedBox(width: 6),
@@ -1553,14 +1558,13 @@ class _WalletScreenState extends State<WalletScreen> {
                               '${l.t('qty_label_short')}${item['quantity']}  ×  EGP ${((item['currentPrice'] as num).toDouble()).toString().contains('.') ? (item['currentPrice'] as num).toDouble().toStringAsFixed(3).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '') : (item['currentPrice'] as num).toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.black87,
                               ),
                             ),
                             Text(
                               '${l.t('real_value_label')}${(item['realMarketValue'] as num).toStringAsFixed(0)}${l.t('supposed_value_label')}${(item['supposedValue'] as num).toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Colors.black54,
+                                color: isDark ? Colors.white60 : Colors.black54,
                                 height: 1.2,
                               ),
                             ),
@@ -1619,7 +1623,7 @@ class _WalletScreenState extends State<WalletScreen> {
                                         item['ticker'],
                                       )
                                       ? Colors.indigo.withOpacity(0.05)
-                                      : Colors.black.withOpacity(0.03),
+                                      : (isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -1627,16 +1631,16 @@ class _WalletScreenState extends State<WalletScreen> {
                                       ? '${item['gapShares']}${l.t('shares_suffix')}'
                                       : 'EGP ${(item['gap'] as num).toStringAsFixed(0)}',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color:
-                                        _showSharesTickers.contains(
-                                          item['ticker'],
-                                        )
-                                        ? Colors.indigo
-                                        : Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color:
+                                          _showSharesTickers.contains(
+                                            item['ticker'],
+                                          )
+                                          ? (isDark ? Colors.indigoAccent : Colors.indigo)
+                                          : (isDark ? Colors.white : Colors.black),
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                 ),
                               ),
                             ),

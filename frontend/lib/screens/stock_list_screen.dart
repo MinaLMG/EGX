@@ -112,7 +112,7 @@ class _StockListScreenState extends State<StockListScreen> {
                 l.t('market_data'),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
         actions: [
           IconButton(
@@ -167,12 +167,15 @@ class _StockListScreenState extends State<StockListScreen> {
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Colors.deepPurple, Colors.white],
-            stops: [0.0, 0.3],
+            colors: [
+              Colors.deepPurple,
+              Theme.of(context).scaffoldBackgroundColor,
+            ],
+            stops: const [0.0, 0.4],
           ),
         ),
         child: Column(
@@ -205,8 +208,11 @@ class _StockListScreenState extends State<StockListScreen> {
                       final bool isInWallet =
                           walletTickers.contains(stock.ticker);
 
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
                       return Card(
-                        color: isInWallet ? Colors.amber.shade50 : Colors.white,
+                        color: isInWallet 
+                            ? (isDark ? Colors.amber.withOpacity(0.15) : Colors.amber.shade50) 
+                            : Theme.of(context).cardColor,
                         margin: const EdgeInsets.only(bottom: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
@@ -288,7 +294,7 @@ class _StockListScreenState extends State<StockListScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _buildDataRow('${l.t('current_price')}:',
-                                      '${stock.price} EGP', Colors.black),
+                                      '${stock.price} EGP', Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black),
                                   if (stock.arabicStockFairValue != null)
                                     _buildDataRow('${l.t('fair_value')}:',
                                         '${stock.arabicStockFairValue} EGP', Colors.blue),
@@ -301,9 +307,9 @@ class _StockListScreenState extends State<StockListScreen> {
                                   const Divider(height: 32),
                                   Text(
                                     l.t('recommendation_scores'),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.deepPurple,
+                                      color: isDark ? const Color(0xFFCE93D8) : Colors.deepPurple,
                                     ),
                                   ),
                                   const SizedBox(height: 8),

@@ -81,7 +81,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l.t('admin_users')),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

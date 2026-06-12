@@ -39,7 +39,7 @@ class NotificationService {
      */
     async checkAllWalletsAndNotify() {
         console.log('Notification Check: Starting wallet analysis for all users...');
-        const users = await User.find({ status: 'active', isDeleted: false });
+        const users = await User.find({ status: 'active', isDeleted: { $ne: true } });
 
         let totalSent = 0;
 
@@ -57,7 +57,7 @@ class NotificationService {
                     .filter(a => a.suggestion === 'Buy' || a.suggestion === 'Sell')
                     .map(a => `${a.ticker}:${a.suggestion}`)
                     .sort();
-                
+
                 // 3. Compare with last stored suggestions
                 const lastSuggestions = (user.lastPendingSuggestions || []).sort();
                 const hasChanged = JSON.stringify(currentSuggestions) !== JSON.stringify(lastSuggestions);
@@ -68,7 +68,7 @@ class NotificationService {
                     const isNewTickerAdded = currentTickers.some(t => !lastTickers.includes(t));
 
                     console.log(`[Notification Debug] User: ${user.email} | Change: ${hasChanged} | New Ticker: ${isNewTickerAdded}`);
-                    
+
                     if (isNewTickerAdded && currentSuggestions.length > 0) {
                         // Build Arabic content listing each action
                         const buyTickers = (analysis || [])
@@ -122,7 +122,7 @@ class NotificationService {
             // Send via FCM if tokens exist and Firebase is init
             if (user.fcmTokens && user.fcmTokens.length > 0 && this.isInitialized) {
                 const invalidTokens = [];
-                
+
                 // Send to all registered devices
                 const sendPromises = user.fcmTokens.map(async (token) => {
                     try {
@@ -165,7 +165,7 @@ class NotificationService {
                         console.log(`FCM Sent to ${user.email} on device ${token.substring(0, 10)}...`);
                     } catch (error) {
                         // If token is invalid or expired, mark it for removal
-                        if (error.code === 'messaging/registration-token-not-registered' || 
+                        if (error.code === 'messaging/registration-token-not-registered' ||
                             error.code === 'messaging/invalid-registration-token') {
                             invalidTokens.push(token);
                         } else {

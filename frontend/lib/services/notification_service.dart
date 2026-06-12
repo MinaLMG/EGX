@@ -12,34 +12,34 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  late FirebaseMessaging _fcm;
-  late FlutterLocalNotificationsPlugin _localNotifications;
+  FirebaseMessaging? _fcm;
+  FlutterLocalNotificationsPlugin? _localNotifications;
+  bool _isInit = false;
 
   // Web VAPID key from Firebase Console
-  final String _webVapidKey =
-      'BNkPpMwZYxaOzdRuNcCAlHQRdE4c-X78jx7jjNro5BFNKH0e4lzbQdK82D0_gDovc5-BUMe8M0ky4gVLwZlAi20';
+  final String _webVapidKey = 'BNkPpMwZYxaOzdRuNcCAlHQRdE4c-X78jx7jjNro5BFNKH0e4lzbQdK82D0_gDovc5-BUMe8M0ky4gVLwZlAi20';
+
   Future<void> init() async {
-    // 1. Initialize Firebase
-    //    - Web: passes config explicitly (no google-services.json on web)
-    //    - Android: reads from google-services.json automatically
+    if (_isInit) return;
+    
     try {
       await LogService.log('--- SYSTEM AUDIT ---');
       if (!kIsWeb) {
-        await LogService.log(
-          'OS: ${Platform.operatingSystem}, Ver: ${Platform.operatingSystemVersion}',
-        );
+        await LogService.log('OS: ${Platform.operatingSystem}, Ver: ${Platform.operatingSystemVersion}');
       }
 
       await LogService.log('Initializing Firebase...');
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } else {
+        await LogService.log('Firebase already initialized, skipping...');
+      }
+      
       final options = Firebase.app().options;
-      await LogService.log(
-        'Config: Proj=${options.projectId}, App=${options.appId.substring(0, 10)}...',
-      );
-
+      await LogService.log('Config: Proj=${options.projectId}, App=${options.appId.substring(0, 10)}...');
+      
       _fcm = FirebaseMessaging.instance;
       await LogService.log('Firebase initialized successfully.');
     } catch (e) {
@@ -49,14 +49,10 @@ class NotificationService {
 
     // 2. Request permissions
     await LogService.log('Requesting notification permissions...');
-    final settings = await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    final settings = await _fcm!.requestPermission(alert: true, badge: true, sound: true);
     await LogService.log('Permission status: ${settings.authorizationStatus}');
 
-    // 3. Local Notifications — only on Android (not needed on Web)
+    // 3. Local Notifications — only on Android/iOS (not needed on Web)
     if (!kIsWeb) {
       _localNotifications = FlutterLocalNotificationsPlugin();
       const AndroidInitializationSettings androidSettings =
@@ -72,14 +68,14 @@ class NotificationService {
         iOS: darwinSettings,
         macOS: darwinSettings,
       );
-
+      
       await LogService.log('Initializing Local Notifications...');
-      final initResult = await _localNotifications.initialize(initSettings);
+      final initResult = await _localNotifications!.initialize(initSettings);
       await LogService.log('Local Notifications ready. Result: $initResult');
 
       // Create the High Importance channel for "Heads-up" (Pop-ups)
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'egx_alerts_channel_v2', // ID must be consistent with _showLocalNotification
+        'egx_alerts_channel_v2',
         'EGX Portfolio Alerts',
         description: 'Important rebalancing alerts and price updates.',
         importance: Importance.max,
@@ -87,7 +83,7 @@ class NotificationService {
         sound: RawResourceAndroidNotificationSound('alert_1'),
       );
 
-      await _localNotifications
+      await _localNotifications!
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >()
@@ -96,9 +92,7 @@ class NotificationService {
 
     // 4. Foreground message handler
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      await LogService.log(
-        'FOREGROUND MSG: ${message.notification?.title ?? "No Title"}',
-      );
+      await LogService.log('FOREGROUND MSG: ${message.notification?.title ?? "No Title"}');
       if (kIsWeb) {
         await LogService.log('Web handles foreground natively.');
       } else {
@@ -112,40 +106,47 @@ class NotificationService {
       await LogService.log('APP OPENED VIA NOTIFICATION: ${message.data}');
     });
 
+    _isInit = true; // Mark as initialized
+    
     // 6. Register token with backend
     await updateToken();
   }
 
   Future<void> updateToken() async {
     try {
-      await LogService.log('Starting updateToken()...');
+      // Auto-init if called prematurely
+      if (!_isInit || _fcm == null) {
+        await LogService.log('updateToken() called before init, initializing now...');
+        await init();
+        if (_fcm == null) {
+          await LogService.error('FCM still null after emergency init');
+          return;
+        }
+      }
 
+      await LogService.log('Starting updateToken()...');
+      
       // On iOS, we sometimes need to wait for the APNS token to be ready
-      if (!kIsWeb && (Firebase.app().options.projectId.isNotEmpty)) {
-        await LogService.log('Detected iOS/Android, checking APNS token...');
+      if (!kIsWeb && Platform.isIOS) {
+        await LogService.log('Detected iOS, checking APNS token...');
         int retryCount = 0;
         String? apnsToken;
-
-        while (retryCount < 3 && apnsToken == null) {
-          apnsToken = await _fcm.getAPNSToken();
+        
+        while (retryCount < 5 && apnsToken == null) {
+          apnsToken = await _fcm!.getAPNSToken();
           if (apnsToken == null) {
-            await LogService.log(
-              'APNS Token not ready yet, retrying... ($retryCount)',
-            );
+            await LogService.log('APNS Token not ready yet, retrying... ($retryCount)');
             await Future.delayed(const Duration(seconds: 2));
             retryCount++;
           }
         }
-        await LogService.log(
-          'APNS Token result: ${apnsToken != null ? "FOUND" : "NOT FOUND"}',
-        );
+        await LogService.log('APNS Token result: ${apnsToken != null ? "FOUND" : "NOT FOUND"}');
       }
 
       await LogService.log('Fetching FCM token...');
-      // Web requires a VAPID key; Android/iOS uses internal config
       final token = kIsWeb
-          ? await _fcm.getToken(vapidKey: _webVapidKey)
-          : await _fcm.getToken();
+          ? await _fcm!.getToken(vapidKey: _webVapidKey)
+          : await _fcm!.getToken();
 
       if (token != null) {
         await LogService.log('FCM token found: ${token.substring(0, 10)}...');
@@ -160,6 +161,8 @@ class NotificationService {
   }
 
   void _showLocalNotification(RemoteMessage message) {
+    if (_localNotifications == null) return;
+
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
           'egx_alerts_channel_v2',
@@ -182,7 +185,7 @@ class NotificationService {
       macOS: darwinDetails,
     );
 
-    _localNotifications.show(
+    _localNotifications!.show(
       message.notification.hashCode,
       message.notification?.title,
       message.notification?.body,

@@ -100,9 +100,16 @@ class EGXApp extends StatelessWidget {
       scaffoldBackgroundColor: const Color(0xFF121212),
       cardColor: const Color(0xFF1E1E1E),
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF1A1A2E),
+        backgroundColor: Color(0xFF2D2D44),
         foregroundColor: Colors.white,
         elevation: 0,
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Colors.white),
+        bodyMedium: TextStyle(color: Colors.white),
+        bodySmall: TextStyle(color: Colors.white70),
+        titleMedium: TextStyle(color: Colors.white),
+        titleSmall: TextStyle(color: Colors.white70),
       ),
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: Color(0xFF1E1E1E),
