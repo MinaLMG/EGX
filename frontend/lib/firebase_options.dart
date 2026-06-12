@@ -2,7 +2,8 @@
 // For more info: https://firebase.flutter.dev/docs/cli
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
@@ -10,13 +11,24 @@ class DefaultFirebaseOptions {
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
+      case TargetPlatform.iOS:
+        return ios;
       default:
-        // Other platforms (iOS, Windows, etc.) not configured yet
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
         );
     }
   }
+
+  // ── iOS (iPhone/iPad) ──────────────────────────────────────────────────────
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyCCe_xPT294jyYq1IMAfZxvVzQB4mcGjng',
+    appId: '1:950929147311:ios:ae5b8b8a444109a7ecdb5a',
+    messagingSenderId: '950929147311',
+    projectId: 'egx-10666',
+    storageBucket: 'egx-10666.firebasestorage.app',
+    iosBundleId: 'com.example.egxMobile',
+  );
 
   // ── Web (Flutter Web / Vercel) ─────────────────────────────────────────────
   static const FirebaseOptions web = FirebaseOptions(

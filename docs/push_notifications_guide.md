@@ -87,7 +87,31 @@ You must include the Firebase JS SDKs in the `<head>` of your `index.html` and i
 
 ---
 
-## 6. Maintenance Checklist
+## 7. iOS Implementation (Apple)
+
+iOS implementation is stricter and requires a physical device (no simulators) and an Apple Developer account.
+
+### 1. Configuration
+1.  **Register App**: Use Bundle ID `com.example.egxMobile` in Firebase Console.
+2.  **Config File**: Download `GoogleService-Info.plist` and place it in `ios/Runner/`.
+
+### 2. Xcode Capabilities
+You MUST enable these in Xcode for notifications to arrive:
+- **Push Notifications**: Adds the entitlement to your app.
+- **Background Modes**: Check "Remote notifications".
+
+### 3. APNs Integration
+Firebase acts as a wrapper for **APNs** (Apple Push Notification service).
+- Generate an **APNs Auth Key (.p8)** in Apple Developer Portal.
+- Upload this `.p8` file to Firebase Console > Project Settings > Cloud Messaging > Apple app connection.
+
+### 4. Foreground Handling (Darwin)
+Unlike Android, iOS uses "Darwin" settings for technical details. The `NotificationService` now includes `DarwinNotificationDetails` to ensure that even when the app is open, the user sees the alert.
+
+---
+
+## 8. Maintenance Checklist
 - [ ] **Rotate Keys**: If `FIREBASE_SERVICE_ACCOUNT` is ever leaked, revoke it in Google Cloud Console.
 - [ ] **Market Hours**: The cron job in `app.js` is guarded by `isMarketHour`. To test at night, you must temporarily bypass this check.
 - [ ] **VAPID Key**: Ensure the VAPID key in Flutter matches the one in the Firebase Console perfectly.
+- [ ] **iOS certificates**: Ensure the APNs certificate/key hasn't expired (usually lasts 1 year for certificates, keys are permanent).

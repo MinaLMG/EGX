@@ -45,5 +45,16 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires access to the photo library to upload images.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires access to the camera to take profile photos.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app requires access to your location to provide personalized services.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+	<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

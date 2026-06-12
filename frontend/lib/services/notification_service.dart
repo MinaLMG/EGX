@@ -26,11 +26,9 @@ class NotificationService {
     //    - Web: passes config explicitly (no google-services.json on web)
     //    - Android: reads from google-services.json automatically
     try {
-      if (kIsWeb) {
-        await Firebase.initializeApp(options: DefaultFirebaseOptions.web);
-      } else {
-        await Firebase.initializeApp();
-      }
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       _fcm = FirebaseMessaging.instance;
     } catch (e) {
       print('Firebase initialization error: $e');
@@ -45,8 +43,16 @@ class NotificationService {
       _localNotifications = FlutterLocalNotificationsPlugin();
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
+      const DarwinInitializationSettings darwinSettings =
+          DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
       const InitializationSettings initSettings = InitializationSettings(
         android: androidSettings,
+        iOS: darwinSettings,
+        macOS: darwinSettings,
       );
       await _localNotifications.initialize(initSettings);
 
@@ -87,17 +93,35 @@ class NotificationService {
 
   Future<void> updateToken() async {
     try {
-      // Web requires a VAPID key; Android uses google-services.json
+      // On iOS, we sometimes need to wait for the APNS token to be ready
+      if (!kIsWeb && (Firebase.app().options.projectId.isNotEmpty)) {
+        int retryCount = 0;
+        String? apnsToken;
+        
+        while (retryCount < 3 && apnsToken == null) {
+          apnsToken = await _fcm.getAPNSToken();
+          if (apnsToken == null) {
+            print('[FCM] APNS Token not ready yet, retrying in 2 seconds... ($retryCount)');
+            await Future.delayed(const Duration(seconds: 2));
+            retryCount++;
+          }
+        }
+        print('[FCM] APNS Token: $apnsToken');
+      }
+
+      // Web requires a VAPID key; Android/iOS uses internal config
       final token = kIsWeb
           ? await _fcm.getToken(vapidKey: _webVapidKey)
           : await _fcm.getToken();
 
       if (token != null) {
-        print('FCM Token: $token');
+        print('[FCM] Final Token: $token');
         await AuthService().updateFcmToken(token);
+      } else {
+        print('[FCM] Token is still null after retries.');
       }
     } catch (e) {
-      print('Error getting FCM token: $e');
+      print('[FCM] Error getting token: $e');
     }
   }
 
@@ -115,8 +139,17 @@ class NotificationService {
       playSound: true,
       sound: RawResourceAndroidNotificationSound('alert_1'),
     );
+    const DarwinNotificationDetails darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'alert_1.caf', // iOS uses different sound formats like .caf or .m4a
+    );
+
     const NotificationDetails details = NotificationDetails(
       android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
     );
 
     _localNotifications.show(
