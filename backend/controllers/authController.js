@@ -194,3 +194,16 @@ exports.acceptHint = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// @desc    Verify Debug Password
+// @route   POST /api/auth/debug-verify
+exports.verifyDebugPassword = async (req, res) => {
+    const { password } = req.body;
+    const secret = process.env.DEBUG_PASSWORD || 'egx_debug_2026';
+    
+    if (password === secret) {
+        res.status(200).json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid debug password' });
+    }
+};

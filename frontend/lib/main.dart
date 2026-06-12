@@ -6,12 +6,26 @@ import 'services/auth_service.dart';
 import 'screens/main_shell.dart';
 import 'screens/login_screen.dart';
 import 'services/notification_service.dart';
+import 'services/log_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppConfig.load();
-  await NotificationService().init();
-  await AppSettings.instance.loadFromPrefs();
+  await LogService.init(); // Load if we should be recording
+  await LogService.log('--- APP BOOTING ---');
+
+  try {
+    await AppConfig.load();
+    await LogService.log('Config loaded');
+    
+    await NotificationService().init();
+    await LogService.log('Notifications ready');
+
+    await AppSettings.instance.loadFromPrefs();
+    await LogService.log('Settings ready');
+  } catch (e) {
+    await LogService.error('Fatal startup error', e);
+  }
+
   runApp(EGXApp());
 }
 

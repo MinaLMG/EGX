@@ -10,6 +10,7 @@ import 'faq_screen.dart';
 import 'more_actions_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
+import 'debug_console_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({Key? key}) : super(key: key);
@@ -79,9 +80,17 @@ class _MainShellState extends State<MainShell> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(
-              'EGX',
-              style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+            title: GestureDetector(
+              onLongPress: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => DebugConsoleScreen()),
+                );
+              },
+              child: const Text(
+                'EGX',
+                style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              ),
             ),
             actions: [
               // Notification bell

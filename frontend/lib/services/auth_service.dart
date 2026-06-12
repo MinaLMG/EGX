@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
+import 'log_service.dart';
 
 class AuthService {
   static const String _tokenKey = 'auth_token';
@@ -99,18 +100,25 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$_baseUrl/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
-    final data = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      final user = User.fromJson(data['user']);
-      await _saveSession(data['token'], user);
-      return {'success': true, 'user': user};
-    } else {
-      return {'success': false, 'message': data['message'] ?? 'Login failed'};
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200) {
+        final user = User.fromJson(data['user']);
+        await _saveSession(data['token'], user);
+        await LogService.log('Login Success. User: ${user.id} (${user.name})');
+        return {'success': true, 'user': user};
+      } else {
+        await LogService.error('Login Failed', data['message'] ?? 'Login failed');
+        return {'success': false, 'message': data['message'] ?? 'Login failed'};
+      }
+    } catch (e) {
+      await LogService.error('Login Exception', e);
+      return {'success': false, 'message': 'Connection error'};
     }
   }
 
@@ -168,13 +176,18 @@ class AuthService {
   Future<void> updateFcmToken(String? fcmToken) async {
     if (fcmToken == null) return;
     try {
-      await http.patch(
+      await LogService.log('Sending token to backend: ${fcmToken.substring(0, 10)}...');
+      final response = await http.patch(
         Uri.parse('$_baseUrl/fcm-token'),
         headers: await authHeaders(),
         body: jsonEncode({'fcmToken': fcmToken}),
       );
+      await LogService.log('Backend response status: ${response.statusCode}');
+      if (response.statusCode != 200) {
+        await LogService.error('Backend rejected token: ${response.body}');
+      }
     } catch (e) {
-      print('Error updating FCM token: $e');
+      await LogService.error('Network error during token update', e);
     }
   }
 }

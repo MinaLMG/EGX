@@ -3,7 +3,8 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../l10n/app_localizations.dart';
 import 'register_screen.dart';
-import 'home_screen.dart';
+import 'main_shell.dart';
+import 'debug_console_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -38,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
           NotificationService().updateToken();
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => HomeScreen()),
+            MaterialPageRoute(builder: (_) => const MainShell()),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -78,8 +79,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Icon(Icons.show_chart_rounded, size: 80, color: Colors.white),
                   const SizedBox(height: 12),
-                  Text(l.t('app_title'),
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                  GestureDetector(
+                    onLongPress: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => DebugConsoleScreen()),
+                      );
+                    },
+                    child: Text(l.t('app_title'),
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(l.t('portfolio_intelligence'),
