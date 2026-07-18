@@ -57,7 +57,9 @@ class _MatchScreenState extends State<MatchScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('${l.t('match_title_prefix')} ${widget.stock.ticker}'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark 
+            ? Theme.of(context).appBarTheme.backgroundColor 
+            : Theme.of(context).colorScheme.primary,
       ),
       body: Column(
         children: [

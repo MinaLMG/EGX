@@ -42,7 +42,7 @@ class MoreActionsScreen extends StatelessWidget {
                   icon: Icons.privacy_tip_outlined,
                   title: l.t('privacy_settings'),
                   subtitle: l.t('privacy_settings_sub'),
-                  color: Colors.indigo,
+                  color: Theme.of(context).colorScheme.primary,
                   onTap: () => _showComingSoon(context, l),
                 ),
               ]),

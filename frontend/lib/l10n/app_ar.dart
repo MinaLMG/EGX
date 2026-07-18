@@ -32,6 +32,7 @@ const Map<String, String> appStringsAr = {
   'theme_light':            'فاتح',
   'theme_dark':             'داكن',
   'theme_system':           'تلقائي',
+  'theme_phosphor':         'فسفوري',
 
   'my_interests':           'اهتماماتي',
   'interests_subtitle':     'اختر المجالات التي تهمك',

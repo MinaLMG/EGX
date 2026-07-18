@@ -14,7 +14,7 @@ const UserPreferencesSchema = new mongoose.Schema({
     },
     theme: {
         type: String,
-        enum: ['light', 'dark', 'system'],
+        enum: ['light', 'dark', 'system', 'phosphor'],
         default: 'system'
     },
     selectedInterests: [{

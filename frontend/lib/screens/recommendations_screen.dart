@@ -58,6 +58,15 @@ class _RecommendationsScreenState extends State<RecommendationsScreen> {
           title: Text(l.t('admin_recommendations')),
           bottom: TabBar(
             isScrollable: true,
+            labelColor: Theme.of(context).brightness == Brightness.dark 
+                ? Theme.of(context).colorScheme.primary 
+                : Colors.white,
+            unselectedLabelColor: Theme.of(context).brightness == Brightness.dark 
+                ? (Theme.of(context).colorScheme.primary).withOpacity(0.6) 
+                : Colors.white.withOpacity(0.6),
+            indicatorColor: Theme.of(context).brightness == Brightness.dark 
+                ? Theme.of(context).colorScheme.primary 
+                : Colors.white,
             tabs: [
               Tab(text: l.t('bf_update')),
               Tab(text: '${l.t('fundamental')} (${_data?.fundamental.length ?? 0})'),
@@ -203,7 +212,7 @@ class __BfUpdateTabState extends State<_BfUpdateTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.file_upload, size: 64, color: Colors.deepPurple),
+          Icon(Icons.file_upload, size: 64, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 20),
           Text(
             l.t('bf_update'),
@@ -251,7 +260,7 @@ class __BfUpdateTabState extends State<_BfUpdateTab> {
             label: Text(l.t('select_excel')),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),
-              backgroundColor: Colors.deepPurple,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
             ),
           ),
@@ -409,7 +418,7 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                     if (_editingId != null)
                       Text(
                         'Editing: ${_selectedStock?.ticker}',
-                        style: const TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
                       )
                     else
                       Autocomplete<Stock>(
@@ -456,7 +465,7 @@ class __RecommendationListTabState extends State<_RecommendationListTab> {
                           child: ElevatedButton(
                             onPressed: (_isSaving || (_editingId == null && _selectedStock == null)) ? null : _save,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _editingId == null ? Colors.deepPurple : Colors.green,
+                              backgroundColor: _editingId == null ? Theme.of(context).colorScheme.primary : Colors.green,
                               foregroundColor: Colors.white,
                               fixedSize: const Size.fromHeight(45),
                             ),
@@ -657,7 +666,7 @@ class __OrderedListTabState extends State<_OrderedListTab> {
             onPressed: _isSaving ? null : _save,
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),
-              backgroundColor: Colors.deepPurple,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
             ),
             child: Text(l.t('save_arrangement')),

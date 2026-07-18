@@ -111,16 +111,24 @@ class _MatchWizardScreenState extends State<MatchWizardScreen> {
         title: Text(
           '${l.t('admin_matching_wizard')} (${currentIndex + 1}/${unmatchedStocks.length})',
         ),
-        backgroundColor: Colors.orange.shade700,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark 
+            ? Theme.of(context).appBarTheme.backgroundColor 
+            : Theme.of(context).colorScheme.primary,
       ),
       body: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.orange.shade50,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Theme.of(context).cardColor
+                : Theme.of(context).colorScheme.primary.withOpacity(0.08),
             child: Row(
               children: [
-                CircleAvatar(child: Text(currentStock.ticker[0])),
+                CircleAvatar(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  child: Text(currentStock.ticker[0]),
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(

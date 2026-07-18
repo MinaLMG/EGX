@@ -88,7 +88,9 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l.t('market_matrix_admin')),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark 
+            ? Theme.of(context).appBarTheme.backgroundColor 
+            : Theme.of(context).colorScheme.primary,
         actions: [
           IconButton(icon: Icon(Icons.refresh), onPressed: _loadData),
         ],
@@ -109,7 +111,7 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
                               sortColumnIndex: _getColumnIndex(_sortColumn),
                               sortAscending: _sortAscending,
                               headingRowColor: MaterialStateProperty.all(
-                                  Colors.deepPurple.shade50),
+                                  Theme.of(context).colorScheme.primary.withOpacity(0.08)),
                               columns: [
                                 DataColumn(
                                   label: Text(l.t('ticker_label')),
@@ -214,7 +216,7 @@ class _AdminStockMatrixScreenState extends State<AdminStockMatrixScreen> {
           FilterChip(
             label: Text(l.t('in_any_wallet')),
             selected: _showOnlyInWallets,
-            selectedColor: Colors.deepPurple.shade100,
+            selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
             onSelected: (val) {
               setState(() {
                 _showOnlyInWallets = val;

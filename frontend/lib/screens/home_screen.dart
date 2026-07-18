@@ -23,15 +23,28 @@ class HomeScreenContent extends StatelessWidget {
         final l = AppLocalizations.of(context);
         final isAdmin = user?.isAdmin ?? false;
         final isDark = Theme.of(context).brightness == Brightness.dark;
+        final primary = Theme.of(context).colorScheme.primary;
+        final isPhosphor = primary.value == 0xFF89F200 || primary.value == 0xFF89f200;
+
+        final Color topColor;
+        final Color bottomColor;
+        if (isPhosphor) {
+          topColor = const Color(0xFF121A0F);
+          bottomColor = Theme.of(context).scaffoldBackgroundColor;
+        } else if (isDark) {
+          topColor = const Color(0xFF1A1A2E);
+          bottomColor = Theme.of(context).scaffoldBackgroundColor;
+        } else {
+          topColor = primary;
+          bottomColor = Theme.of(context).scaffoldBackgroundColor;
+        }
 
         return Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: isDark
-                  ? [const Color(0xFF1A1A2E), const Color(0xFF121212)]
-                  : [const Color(0xFF6A1B9A), const Color(0xFFF5F5F5)],
+              colors: [topColor, bottomColor],
               stops: const [0.0, 0.4],
             ),
           ),
@@ -145,7 +158,7 @@ class _MenuCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            color: isDark ? Theme.of(context).cardColor : Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(

@@ -41,7 +41,7 @@ class _WalletScreenState extends State<WalletScreen> {
   String _mode = 'automatic';
   String _sortCriteria = 'score'; // score (default), supposed, real, deviation
   bool _isAscending = false;
-  final Set<String> _showSharesTickers = {};
+  final Set<String> _showEgpTickers = {};
 
   @override
   void initState() {
@@ -423,9 +423,15 @@ class _WalletScreenState extends State<WalletScreen> {
               Tab(text: l.t('next'), icon: Icon(Icons.trending_up, size: 20)),
               Tab(text: l.t('profit'), icon: Icon(Icons.calculate, size: 20)),
             ],
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white60,
-            indicatorColor: Colors.amber,
+            labelColor: Theme.of(context).brightness == Brightness.dark 
+                ? Theme.of(context).colorScheme.primary 
+                : Colors.white,
+            unselectedLabelColor: Theme.of(context).brightness == Brightness.dark 
+                ? (Theme.of(context).colorScheme.primary).withOpacity(0.6) 
+                : Colors.white60,
+            indicatorColor: Theme.of(context).brightness == Brightness.dark 
+                ? Theme.of(context).colorScheme.primary 
+                : Colors.amber,
           ),
           actions: [
             IconButton(icon: Icon(Icons.refresh), onPressed: _loadData),
@@ -487,6 +493,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildActionsTab(AppLocalizations l) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final hasActions =
         _walletData?['analysis'] != null &&
         (_walletData!['analysis'] as List).any(
@@ -503,7 +510,7 @@ class _WalletScreenState extends State<WalletScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              color: primaryColor,
             ),
           ),
           Text(
@@ -534,7 +541,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     ),
                     Text(
                       l.t('no_actions_needed'),
-                      style: TextStyle(color: Colors.black54),
+                      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54),
                     ),
                   ],
                 ),
@@ -546,6 +553,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildPredictionsTab(AppLocalizations l) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     if (_walletData?['analysis'] == null) return SizedBox.shrink();
 
     // Filter to only 'Hold' stocks (less than deviation% diff)
@@ -576,12 +584,12 @@ class _WalletScreenState extends State<WalletScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              color: primaryColor,
             ),
           ),
           Text(
             l.t('predicted_targets_subtitle'),
-            style: TextStyle(color: Colors.black54, fontSize: 13),
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54, fontSize: 13),
           ),
           SizedBox(height: 16),
           if (top3.isEmpty)
@@ -641,19 +649,19 @@ class _WalletScreenState extends State<WalletScreen> {
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            if (_showSharesTickers.contains(item['ticker'])) {
-                              _showSharesTickers.remove(item['ticker']);
+                            if (_showEgpTickers.contains(item['ticker'])) {
+                              _showEgpTickers.remove(item['ticker']);
                             } else {
-                              _showSharesTickers.add(item['ticker']);
+                              _showEgpTickers.add(item['ticker']);
                             }
                           });
                         },
                         child: Row(
                           children: [
                             Text(
-                              _showSharesTickers.contains(item['ticker'])
-                                  ? '${item['predictShares']}${l.t('shares_suffix')}'
-                                  : '${l.t('balanced_trade_prefix')}${tradeValue.toStringAsFixed(0)}',
+                              _showEgpTickers.contains(item['ticker'])
+                                  ? '${l.t('balanced_trade_prefix')}${tradeValue.toStringAsFixed(0)}'
+                                  : '${item['predictShares']}${l.t('shares_suffix')}',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: isSellingSide
@@ -746,7 +754,7 @@ class _WalletScreenState extends State<WalletScreen> {
           children: [
             Icon(Icons.hourglass_empty, size: 64, color: Colors.grey),
             SizedBox(height: 12),
-            Text(msg, style: TextStyle(color: Colors.black54)),
+            Text(msg, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54)),
           ],
         ),
       ),
@@ -754,6 +762,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildProfitTab(AppLocalizations l) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final profit = _walletData?['profit'];
     final trans = (_walletData?['wallet']?['transactions'] as List?) ?? [];
 
@@ -767,7 +776,7 @@ class _WalletScreenState extends State<WalletScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              color: primaryColor,
             ),
           ),
           SizedBox(height: 16),
@@ -813,7 +822,7 @@ class _WalletScreenState extends State<WalletScreen> {
       ..sort((a, b) => b['date'].compareTo(a['date']));
 
     return ExpansionTile(
-      leading: Icon(Icons.timeline, color: Colors.indigo),
+      leading: Icon(Icons.timeline, color: Theme.of(context).colorScheme.primary),
       title: Text(
         l.t('balance_snapshots'),
         style: TextStyle(fontWeight: FontWeight.bold),
@@ -832,7 +841,7 @@ class _WalletScreenState extends State<WalletScreen> {
               isAdmin
                   ? 'No snapshots yet. Add one below.'
                   : 'No snapshots available. Ask an admin to add one.',
-              style: TextStyle(color: Colors.black54),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54),
             ),
           )
         else
@@ -847,16 +856,18 @@ class _WalletScreenState extends State<WalletScreen> {
               final date = DateTime.parse(snap['date']).toLocal();
               final balance = (snap['balance'] as num).toDouble();
 
+              final primaryColor = Theme.of(context).colorScheme.primary;
+              final isDark = Theme.of(context).brightness == Brightness.dark;
               return Card(
                 margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                   side: BorderSide(
-                    color: isActive ? Colors.indigo : Colors.transparent,
+                    color: isActive ? primaryColor : Colors.transparent,
                     width: 1.5,
                   ),
                 ),
-                color: isActive ? Colors.indigo.shade50 : null,
+                color: isActive ? primaryColor.withOpacity(0.12) : null,
                 child: ListTile(
                   leading: GestureDetector(
                     onTap: () => _setActiveSnapshot(isActive ? null : snapId),
@@ -864,20 +875,20 @@ class _WalletScreenState extends State<WalletScreen> {
                       isActive
                           ? Icons.radio_button_checked
                           : Icons.radio_button_unchecked,
-                      color: isActive ? Colors.indigo : Colors.grey,
+                      color: isActive ? primaryColor : Colors.grey,
                     ),
                   ),
                   title: Text(
                     'EGP ${balance.toStringAsFixed(0)}',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: isActive ? Colors.indigo : Colors.black87,
+                      color: isActive ? primaryColor : (isDark ? Colors.white : Colors.black87),
                     ),
                   ),
                   subtitle: Text(
                     '${date.toString().split(' ')[0]}${isActive ? '  •  ACTIVE' : ''}\nBank Ratio: ${snap['bankRatio'] ?? 0}%',
                     style: TextStyle(
-                      color: isActive ? Colors.indigo : Colors.black54,
+                      color: isActive ? primaryColor : (isDark ? Colors.white60 : Colors.black54),
                       fontWeight: isActive
                           ? FontWeight.bold
                           : FontWeight.normal,
@@ -916,7 +927,7 @@ class _WalletScreenState extends State<WalletScreen> {
               icon: Icon(Icons.add, size: 18),
               label: Text(l.t('add_snapshot')),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
                 minimumSize: Size(double.infinity, 42),
               ),
@@ -927,13 +938,14 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildProfitSettingsSection(AppLocalizations l) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return ExpansionTile(
       title: Text(
         l.t('revenue_calculation_mode'),
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: Text('${l.t('current_value_source')}${_profitMode.toUpperCase()}'),
-      leading: Icon(Icons.tune, color: Colors.deepPurple),
+      leading: Icon(Icons.tune, color: primaryColor),
       children: [
         Padding(
           padding: EdgeInsets.all(16),
@@ -975,7 +987,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 label: Text(l.t('save_profit_settings')),
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 45),
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -1062,16 +1074,18 @@ class _WalletScreenState extends State<WalletScreen> {
       snap['date'],
     ).toLocal().toString().split(' ')[0];
     final balance = (snap['balance'] as num).toStringAsFixed(0);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.indigo.shade50,
+        color: isDark ? primaryColor.withOpacity(0.12) : primaryColor.withOpacity(0.06),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.indigo.shade200),
+        border: Border.all(color: primaryColor.withOpacity(0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.anchor, color: Colors.indigo, size: 18),
+          Icon(Icons.anchor, color: primaryColor, size: 18),
           SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -1081,7 +1095,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   l.t('anchored_to_snap'),
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.indigo.shade400,
+                    color: isDark ? primaryColor : primaryColor.withOpacity(0.8),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1089,13 +1103,13 @@ class _WalletScreenState extends State<WalletScreen> {
                   '$date  •  EGP $balance',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.indigo.shade700,
+                    color: isDark ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   l.t('snap_exclusion_hint'),
-                  style: TextStyle(fontSize: 10, color: Colors.indigo.shade400),
+                  style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.black54),
                 ),
               ],
             ),
@@ -1105,7 +1119,7 @@ class _WalletScreenState extends State<WalletScreen> {
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
             child: Text(
               l.t('clear'),
-              style: TextStyle(color: Colors.indigo, fontSize: 12),
+              style: TextStyle(color: primaryColor, fontSize: 12),
             ),
           ),
         ],
@@ -1114,6 +1128,7 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _infoCard(String label, String value, IconData icon, {Color? color}) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1123,7 +1138,7 @@ class _WalletScreenState extends State<WalletScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: color ?? Colors.deepPurple),
+            Icon(icon, size: 16, color: color ?? primaryColor),
             SizedBox(height: 4),
             Text(label, style: TextStyle(fontSize: 10, color: Colors.grey)),
             FittedBox(
@@ -1267,14 +1282,15 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildSummaryCard() {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     if (_walletData?['totalValue'] == null) return SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
-      color: isDark ? Colors.deepPurple.withOpacity(0.15) : Colors.deepPurple.shade50,
+      color: isDark ? primaryColor.withOpacity(0.12) : primaryColor.withOpacity(0.08),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.deepPurple.withOpacity(0.3)),
+        side: BorderSide(color: primaryColor.withOpacity(0.3)),
       ),
       child: Padding(
         padding: EdgeInsets.all(16),
@@ -1293,7 +1309,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Color(0xFFCE93D8) : Colors.deepPurple,
+                      color: primaryColor,
                     ),
                   ),
                 ],
@@ -1306,12 +1322,13 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildSettingsSection(AppLocalizations l) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return ExpansionTile(
       title: Text(
         l.t('wallet_settings'),
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      leading: Icon(Icons.settings, color: Colors.deepPurple),
+      leading: Icon(Icons.settings, color: primaryColor),
       children: [
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1346,7 +1363,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 label: Text(AppLocalizations.of(context).t('save_settings')),
                 style: ElevatedButton.styleFrom(
                   minimumSize: Size(double.infinity, 45),
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -1424,6 +1441,7 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _buildAnalysisList({required bool onlyPending, required AppLocalizations l}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     if (_walletData?['analysis'] == null) return SizedBox.shrink();
 
     final List items = List.from(_walletData!['analysis']);
@@ -1603,12 +1621,12 @@ class _WalletScreenState extends State<WalletScreen> {
                             GestureDetector(
                               onTap: () {
                                 setState(() {
-                                  if (_showSharesTickers.contains(
+                                  if (_showEgpTickers.contains(
                                     item['ticker'],
                                   )) {
-                                    _showSharesTickers.remove(item['ticker']);
+                                    _showEgpTickers.remove(item['ticker']);
                                   } else {
-                                    _showSharesTickers.add(item['ticker']);
+                                    _showEgpTickers.add(item['ticker']);
                                   }
                                 });
                               },
@@ -1619,25 +1637,25 @@ class _WalletScreenState extends State<WalletScreen> {
                                 ),
                                 decoration: BoxDecoration(
                                   color:
-                                      _showSharesTickers.contains(
+                                      _showEgpTickers.contains(
                                         item['ticker'],
                                       )
-                                      ? Colors.indigo.withOpacity(0.05)
+                                      ? primaryColor.withOpacity(0.12)
                                       : (isDark ? Colors.white10 : Colors.black.withOpacity(0.03)),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  _showSharesTickers.contains(item['ticker'])
-                                      ? '${item['gapShares']}${l.t('shares_suffix')}'
-                                      : 'EGP ${(item['gap'] as num).toStringAsFixed(0)}',
+                                  _showEgpTickers.contains(item['ticker'])
+                                      ? 'EGP ${(item['gap'] as num).toStringAsFixed(0)}'
+                                      : '${item['gapShares']}${l.t('shares_suffix')}',
                                   textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontSize: 11,
                                       color:
-                                          _showSharesTickers.contains(
+                                          _showEgpTickers.contains(
                                             item['ticker'],
                                           )
-                                          ? (isDark ? Colors.indigoAccent : Colors.indigo)
+                                          ? primaryColor
                                           : (isDark ? Colors.white : Colors.black),
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1659,13 +1677,15 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildSortHeader() {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           Text(
             'Sort by:',
-            style: TextStyle(fontSize: 12, color: Colors.black54),
+            style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
           ),
           SizedBox(width: 8),
           _sortChip('Ticker', 'ticker'),
@@ -1681,7 +1701,7 @@ class _WalletScreenState extends State<WalletScreen> {
             onPressed: () => setState(() => _isAscending = !_isAscending),
             padding: EdgeInsets.zero,
             constraints: BoxConstraints(),
-            color: Colors.deepPurple,
+            color: primaryColor,
           ),
         ],
       ),
@@ -1690,23 +1710,25 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Widget _sortChip(String label, String criteria) {
     final isSelected = _sortCriteria == criteria;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return GestureDetector(
       onTap: () => setState(() => _sortCriteria = criteria),
       child: Container(
         margin: EdgeInsets.only(right: 8),
         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.deepPurple.shade100 : Colors.grey.shade100,
+          color: isSelected ? primaryColor.withOpacity(0.15) : (isDark ? Colors.white10 : Colors.grey.shade100),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? Colors.deepPurple : Colors.transparent,
+            color: isSelected ? primaryColor : Colors.transparent,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 11,
-            color: isSelected ? Colors.deepPurple : Colors.black54,
+            color: isSelected ? primaryColor : (isDark ? Colors.white60 : Colors.black54),
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
@@ -1715,6 +1737,8 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   void _showManageModal(Map<String, dynamic> item, AppLocalizations l) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
     final qtyController = TextEditingController(
       text: item['quantity'].toString(),
     );
@@ -1790,8 +1814,8 @@ class _WalletScreenState extends State<WalletScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                foregroundColor: Colors.white,
+                backgroundColor: primaryColor,
+                foregroundColor: isDark ? Colors.black : Colors.white,
                 minimumSize: Size(double.infinity, 50),
               ),
               child: Text(l.t('update_stock_info')),

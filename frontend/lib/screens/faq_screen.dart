@@ -79,9 +79,10 @@ class _FAQScreenState extends State<FAQScreen> {
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: isDark
-                      ? [const Color(0xFF1A1A2E), const Color(0xFF2D1B69)]
-                      : [const Color(0xFF6A1B9A), const Color(0xFF9C27B0)],
+                  colors: [
+                    primary,
+                    Theme.of(context).colorScheme.secondary,
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

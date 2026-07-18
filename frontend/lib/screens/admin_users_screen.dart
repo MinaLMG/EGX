@@ -117,7 +117,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                           ],
                           if (isActive)
                             IconButton(
-                              icon: const Icon(Icons.account_balance_wallet, color: Colors.deepPurple),
+                              icon: Icon(Icons.account_balance_wallet, color: Theme.of(context).colorScheme.primary),
                               onPressed: () {
                                 Navigator.push(
                                   context,

@@ -66,32 +66,7 @@ exports.updateInterests = async (req, res) => {
 // Soft delete: marks the account as deleted. A background job can hard-delete later.
 exports.deleteAccount = async (req, res) => {
     try {
-        const { username } = req.body;
-
-        if (!username) {
-            return res.status(400).json({ message: 'Username confirmation is required' });
-        }
-
-        const user = await User.findById(req.user._id);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Verify the entered username matches the account name (case-sensitive)
-        if (username.trim() !== user.name.trim()) {
-            return res.status(400).json({ message: 'Username does not match. Account was not deleted.' });
-        }
-
-        // Soft delete: mark as deleted with timestamp
-        user.isDeleted = true;
-        user.deletedAt = new Date();
-        user.fcmTokens = []; // Clear push tokens so no more notifications
-        await user.save();
-
-        res.json({
-            message: 'Account deletion scheduled. Your account and all associated data will be permanently removed.',
-            deletedAt: user.deletedAt
-        });
+        return res.status(403).json({ message: 'Account deletion is currently disabled' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

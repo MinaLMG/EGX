@@ -172,7 +172,7 @@ class _StockListScreenState extends State<StockListScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.deepPurple,
+              Theme.of(context).colorScheme.primary,
               Theme.of(context).scaffoldBackgroundColor,
             ],
             stops: const [0.0, 0.4],
@@ -272,8 +272,8 @@ class _StockListScreenState extends State<StockListScreen> {
                             children: [
                               Text(
                                 stock.totalScore.toStringAsFixed(2),
-                                style: const TextStyle(
-                                  color: Colors.deepPurple,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -309,7 +309,7 @@ class _StockListScreenState extends State<StockListScreen> {
                                     l.t('recommendation_scores'),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: isDark ? const Color(0xFFCE93D8) : Colors.deepPurple,
+                                      color: Theme.of(context).colorScheme.primary,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
@@ -340,7 +340,7 @@ class _StockListScreenState extends State<StockListScreen> {
                                           _refresh();
                                         },
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.deepPurple,
+                                          backgroundColor: Theme.of(context).colorScheme.primary,
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
                                                 BorderRadius.circular(20),

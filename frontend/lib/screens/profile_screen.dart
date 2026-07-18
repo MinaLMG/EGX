@@ -63,21 +63,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
       // Sync AppSettings with server values
       await AppSettings.instance.setLocale(Locale(prefs.language));
-      await AppSettings.instance.setTheme(_themeModeFromString(prefs.theme));
-    }
-  }
-
-  ThemeMode _themeModeFromString(String s) {
-    switch (s) {
-      case 'dark':  return ThemeMode.dark;
-      case 'light': return ThemeMode.light;
-      default:      return ThemeMode.system;
+      await AppSettings.instance.setTheme(prefs.theme);
     }
   }
 
   Future<void> _onThemeChanged(String value) async {
     await _profileService.updatePreferences({'theme': value});
-    await AppSettings.instance.setTheme(_themeModeFromString(value));
+    await AppSettings.instance.setTheme(value);
     if (mounted) {
       setState(() => _prefs = UserPreferences(
         language: _prefs!.language,
@@ -236,6 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           DropdownMenuItem(value: 'light', child: Text(l.t('theme_light'))),
                           DropdownMenuItem(value: 'dark',  child: Text(l.t('theme_dark'))),
                           DropdownMenuItem(value: 'system', child: Text(l.t('theme_system'))),
+                          DropdownMenuItem(value: 'phosphor', child: Text(l.t('theme_phosphor'))),
                         ],
                         onChanged: (v) => v != null ? _onThemeChanged(v) : null,
                       ),

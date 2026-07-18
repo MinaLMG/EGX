@@ -80,7 +80,9 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l.t('mubasher_matching_wizard')),
-        backgroundColor: Colors.blueGrey,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark 
+            ? Theme.of(context).appBarTheme.backgroundColor 
+            : Theme.of(context).colorScheme.primary,
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
@@ -99,7 +101,9 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
               children: [
                 Container(
                   padding: EdgeInsets.all(16),
-                  color: Colors.blueGrey.shade50,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(context).cardColor
+                      : Theme.of(context).colorScheme.primary.withOpacity(0.08),
                   child: Row(
                     children: [
                       Expanded(
@@ -113,7 +117,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
                           ],
                         ),
                       ),
-                      Icon(Icons.link, color: Colors.blueGrey),
+                      Icon(Icons.link, color: Theme.of(context).colorScheme.primary),
                       Expanded(
                         child: Column(
                           children: [
@@ -166,7 +170,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
                     onPressed: (_selectedStock == null || _selectedPrice == null) ? null : _match,
                     style: ElevatedButton.styleFrom(
                       minimumSize: Size(double.infinity, 60),
-                      backgroundColor: Colors.blueGrey,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -198,7 +202,7 @@ class _MubasherMatchingScreenState extends State<MubasherMatchingScreen> {
                   items[index],
                   style: TextStyle(
                     fontSize: 13,
-                    color: isSelected ? Colors.white : Colors.black,
+                    color: isSelected ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black),
                   ),
                 ),
                 tileColor: isSelected ? color : null,

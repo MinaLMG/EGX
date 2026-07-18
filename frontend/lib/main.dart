@@ -41,9 +41,13 @@ class EGXApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
 
           // ── Theme ──────────────────────────────────────────────────────────
-          themeMode: settings.themeMode,
+          themeMode: settings.themeSetting == 'phosphor'
+              ? ThemeMode.dark
+              : settings.themeMode,
           theme: _buildLightTheme(),
-          darkTheme: _buildDarkTheme(),
+          darkTheme: settings.themeSetting == 'phosphor'
+              ? _buildPhosphorTheme()
+              : _buildDarkTheme(),
 
           // ── Locale / RTL ───────────────────────────────────────────────────
           locale: settings.locale,
@@ -123,6 +127,88 @@ class EGXApp extends StatelessWidget {
         secondary: Color(0xFF9C27B0),
         surface: Color(0xFF1E1E1E),
         background: Color(0xFF121212),
+      ),
+    );
+  }
+
+  ThemeData _buildPhosphorTheme() {
+    final phosphorGreen = const Color(0xFF89F200);
+    final dimmerGreen = const Color(0xFF6CBD00);
+    final darkBg = const Color(0xFF090D08);
+    final darkCard = const Color(0xFF121A0F);
+
+    return ThemeData(
+      useMaterial3: false,
+      primarySwatch: Colors.green,
+      primaryColor: phosphorGreen,
+      indicatorColor: phosphorGreen,
+      brightness: Brightness.dark,
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: darkBg,
+      cardColor: darkCard,
+      appBarTheme: AppBarTheme(
+        backgroundColor: darkCard,
+        foregroundColor: phosphorGreen,
+        elevation: 0,
+        iconTheme: IconThemeData(color: phosphorGreen),
+        titleTextStyle: TextStyle(
+          color: phosphorGreen,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+          fontFamily: 'Roboto',
+        ),
+      ),
+      iconTheme: IconThemeData(color: phosphorGreen),
+      textTheme: TextTheme(
+        bodyLarge: TextStyle(color: phosphorGreen),
+        bodyMedium: TextStyle(color: dimmerGreen),
+        bodySmall: TextStyle(color: dimmerGreen.withOpacity(0.7)),
+        titleMedium: TextStyle(color: phosphorGreen, fontWeight: FontWeight.bold),
+        titleSmall: TextStyle(color: dimmerGreen, fontWeight: FontWeight.w500),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: darkCard,
+        selectedItemColor: phosphorGreen,
+        unselectedItemColor: dimmerGreen.withOpacity(0.4),
+        type: BottomNavigationBarType.fixed,
+        elevation: 12,
+      ),
+      colorScheme: ColorScheme.dark(
+        primary: phosphorGreen,
+        secondary: dimmerGreen,
+        surface: darkCard,
+        background: darkBg,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: dimmerGreen.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: phosphorGreen, width: 2),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        labelStyle: TextStyle(color: dimmerGreen),
+        hintStyle: TextStyle(color: dimmerGreen.withOpacity(0.5)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: phosphorGreen,
+          foregroundColor: Colors.black,
+          textStyle: const TextStyle(fontWeight: FontWeight.bold, inherit: false),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: phosphorGreen,
+          side: BorderSide(color: phosphorGreen),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: phosphorGreen,
+        ),
       ),
     );
   }

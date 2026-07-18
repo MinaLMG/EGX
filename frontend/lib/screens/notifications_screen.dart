@@ -44,24 +44,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F0FF),
+      backgroundColor: isDark ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF5F0FF),
       appBar: AppBar(
         title: Text(
           '🔔 ${l.t('notifications')}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
+        backgroundColor: isDark ? Theme.of(context).appBarTheme.backgroundColor : primaryColor,
+        foregroundColor: isDark ? Theme.of(context).appBarTheme.foregroundColor : Colors.white,
         elevation: 0,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: Colors.deepPurple))
+          ? Center(child: CircularProgressIndicator(color: primaryColor))
           : _notifications.isEmpty
-              ? _buildEmpty(l)
-              : RefreshIndicator(
+               ? _buildEmpty(l)
+               : RefreshIndicator(
                   onRefresh: _load,
-                  color: Colors.deepPurple,
+                  color: primaryColor,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _notifications.length,
@@ -72,11 +75,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmpty(AppLocalizations l) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.notifications_none, size: 80, color: Colors.deepPurple.withOpacity(0.3)),
+          Icon(Icons.notifications_none, size: 80, color: primaryColor.withOpacity(0.3)),
           const SizedBox(height: 16),
           Text(
             l.t('no_notifications'),
@@ -98,13 +102,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _buildCard(Map<String, dynamic> notification, AppLocalizations l) {
     final bool seen = notification['seen'] ?? true;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: seen ? Colors.white : Colors.deepPurple.shade50,
+        color: seen
+            ? (isDark ? Theme.of(context).cardColor : Colors.white)
+            : primaryColor.withOpacity(0.12),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: seen ? Colors.transparent : Colors.deepPurple.shade200,
+          color: seen
+              ? Colors.transparent
+              : primaryColor.withOpacity(0.4),
           width: 1.5,
         ),
         boxShadow: [
@@ -121,12 +132,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: seen ? Colors.grey.shade100 : Colors.deepPurple.shade100,
+            color: seen
+                ? (isDark ? Colors.white10 : Colors.grey.shade100)
+                : primaryColor.withOpacity(0.2),
             shape: BoxShape.circle,
           ),
           child: Icon(
             Icons.notifications_active,
-            color: seen ? Colors.grey.shade500 : Colors.deepPurple,
+            color: seen
+                ? (isDark ? Colors.grey.shade400 : Colors.grey.shade500)
+                : primaryColor,
             size: 26,
           ),
         ),
@@ -148,7 +163,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const SizedBox(height: 6),
             Text(
               _timeAgo(notification['createdAt'] ?? '', l),
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+              ),
             ),
           ],
         ),
@@ -157,8 +175,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             : Container(
                 width: 10,
                 height: 10,
-                decoration: const BoxDecoration(
-                  color: Colors.deepPurple,
+                decoration: BoxDecoration(
+                  color: primaryColor,
                   shape: BoxShape.circle,
                 ),
               ),

@@ -32,6 +32,7 @@ const Map<String, String> appStringsEn = {
   'theme_light':            'Light',
   'theme_dark':             'Dark',
   'theme_system':           'System',
+  'theme_phosphor':         'Phosphor',
 
   'my_interests':           'My Interests',
   'interests_subtitle':     'Select topics you care about',
