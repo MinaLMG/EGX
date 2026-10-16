@@ -18,6 +18,15 @@ const StockSchema = new mongoose.Schema({
     arabic_stock_fair_value: Number,
     arabic_stock_analyzers_fair_value: Number,
     arabic_stock_getter: String,
+    arabic_stock_target_mode: {
+        type: String,
+        enum: ['max', 'analyzers', 'fair_value', 'manual'],
+        default: 'max'
+    },
+    arabic_stock_custom_fair_value: {
+        type: Number,
+        default: null
+    },
     lastUpdated: {
         type: Date,
         default: Date.now

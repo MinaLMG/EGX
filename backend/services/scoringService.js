@@ -106,6 +106,20 @@ class ScoringService {
         return scoreMap;
     }
 
+    _getArabicStockTarget(stock) {
+        const mode = stock.arabic_stock_target_mode || 'max';
+        if (mode === 'manual') {
+            return stock.arabic_stock_custom_fair_value || 0;
+        } else if (mode === 'analyzers') {
+            return stock.arabic_stock_analyzers_fair_value || 0;
+        } else if (mode === 'fair_value') {
+            return stock.arabic_stock_fair_value || 0;
+        } else {
+            // 'max'
+            return Math.max(stock.arabic_stock_analyzers_fair_value || 0, stock.arabic_stock_fair_value || 0);
+        }
+    }
+
     // --- Legacy Scoring Strategy ---
     _legacyScoringSystem(stocks, data, weights) {
         const { bfValues, fundamentalRecs, technicalRecs, rfpRecs, rspRecs } = data;
@@ -150,7 +164,7 @@ class ScoringService {
         }));
 
         const arabicStockRankMap = this._calculateRankScores(stocks.map(s => {
-            const target = s.arabic_stock_analyzers_fair_value || s.arabic_stock_fair_value || 0;
+            const target = this._getArabicStockTarget(s);
             const potential = (target > 0 && s.price > 0) ? (target / s.price) - 1 : 0;
             return { stockId: s._id.toString(), potential };
         }));
@@ -217,7 +231,7 @@ class ScoringService {
             const price = stock.price || 1;
 
             // 2. ArabicStock Steep: Capped Upside (Target / Price) - 1 clamped [0, 1]
-            const target = Math.max(stock.arabic_stock_analyzers_fair_value || 0, stock.arabic_stock_fair_value || 0);
+            const target = this._getArabicStockTarget(stock);
             let arabScore = Math.max(0, (target > 0 && price > 0) ? (target / price) - 1 : 0)
             arabScore = arabScore > 3 ? 0 : arabScore;
             // 3. BF Steep: (2.5 * BF / price) - 1

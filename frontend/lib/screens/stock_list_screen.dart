@@ -264,6 +264,27 @@ class _StockListScreenState extends State<StockListScreen> {
                                   ),
                                 ),
                               ],
+                              if (stock.arabicStockTargetMode != 'max') ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepPurple.shade400,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    stock.arabicStockTargetMode.toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           subtitle: Text(stock.name ?? 'No Name'),
@@ -304,6 +325,15 @@ class _StockListScreenState extends State<StockListScreen> {
                                         '${l.t('analyzers_fair_value')}:',
                                         '${stock.arabicStockAnalyzersFairValue} EGP',
                                         Colors.teal),
+                                  _buildDataRow(
+                                      '${l.t('target_source')}:',
+                                      _getTargetModeLabel(stock.arabicStockTargetMode, l),
+                                      Colors.indigo),
+                                  if (stock.effectiveArabicStockTarget != null)
+                                    _buildDataRow(
+                                        '${l.t('active_target')}:',
+                                        '${stock.effectiveArabicStockTarget!.toStringAsFixed(2)} EGP',
+                                        Colors.deepPurple),
                                   const Divider(height: 32),
                                   Text(
                                     l.t('recommendation_scores'),
@@ -321,31 +351,52 @@ class _StockListScreenState extends State<StockListScreen> {
                                   _buildScoreRow(l.t('rsp'), stock.rspScore),
                                   const SizedBox(height: 16),
                                   if (_isAdmin)
-                                    Center(
-                                      child: ElevatedButton.icon(
-                                        icon: const Icon(Icons.link),
-                                        label: Text(
-                                          isMatched
-                                              ? l.t('change_match')
-                                              : l.t('match_arabicstock'),
-                                        ),
-                                        onPressed: () async {
-                                          await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  MatchScreen(stock: stock),
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8.0),
+                                      child: Wrap(
+                                        alignment: WrapAlignment.center,
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: [
+                                          ElevatedButton.icon(
+                                            icon: const Icon(Icons.link, size: 18),
+                                            label: Text(
+                                              isMatched
+                                                  ? l.t('change_match')
+                                                  : l.t('match_arabicstock'),
                                             ),
-                                          );
-                                          _refresh();
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Theme.of(context).colorScheme.primary,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
+                                            onPressed: () async {
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      MatchScreen(stock: stock),
+                                                ),
+                                              );
+                                              _refresh();
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Theme.of(context).colorScheme.primary,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                          ElevatedButton.icon(
+                                            icon: const Icon(Icons.tune, size: 18),
+                                            label: Text(l.t('configure_target')),
+                                            onPressed: () => _showTargetModeDialog(stock),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.deepPurple,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                 ],
@@ -462,6 +513,173 @@ class _StockListScreenState extends State<StockListScreen> {
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
         ],
+      ),
+    );
+  }
+
+  String _getTargetModeLabel(String mode, AppLocalizations l) {
+    switch (mode) {
+      case 'analyzers':
+        return l.t('target_analyzers');
+      case 'fair_value':
+        return l.t('target_fair_value');
+      case 'manual':
+        return l.t('target_manual');
+      case 'max':
+      default:
+        return l.t('target_max');
+    }
+  }
+
+  void _showTargetModeDialog(Stock stock) {
+    final l = AppLocalizations.of(context);
+    String selectedMode = stock.arabicStockTargetMode;
+    final customController = TextEditingController(
+      text: stock.arabicStockCustomFairValue != null
+          ? stock.arabicStockCustomFairValue.toString()
+          : '',
+    );
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text('${l.t('configure_target')} (${stock.ticker})'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l.t('target_max')),
+                    subtitle: Text(
+                      'Analyzers: ${stock.arabicStockAnalyzersFairValue ?? "-"} | FV: ${stock.arabicStockFairValue ?? "-"}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: 'max',
+                    groupValue: selectedMode,
+                    onChanged: isSubmitting
+                        ? null
+                        : (val) => setDialogState(() => selectedMode = val!),
+                  ),
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l.t('target_analyzers')),
+                    subtitle: Text(
+                      '${stock.arabicStockAnalyzersFairValue ?? "-"} EGP',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: 'analyzers',
+                    groupValue: selectedMode,
+                    onChanged: isSubmitting
+                        ? null
+                        : (val) => setDialogState(() => selectedMode = val!),
+                  ),
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l.t('target_fair_value')),
+                    subtitle: Text(
+                      '${stock.arabicStockFairValue ?? "-"} EGP',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: 'fair_value',
+                    groupValue: selectedMode,
+                    onChanged: isSubmitting
+                        ? null
+                        : (val) => setDialogState(() => selectedMode = val!),
+                  ),
+                  RadioListTile<String>(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l.t('target_manual')),
+                    subtitle: Text(
+                      l.t('custom_fair_value_label'),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    value: 'manual',
+                    groupValue: selectedMode,
+                    onChanged: isSubmitting
+                        ? null
+                        : (val) => setDialogState(() => selectedMode = val!),
+                  ),
+                  if (selectedMode == 'manual') ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: customController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: l.t('custom_fair_value_label'),
+                        hintText: 'e.g. 45.50',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      autofocus: true,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                child: Text(l.t('cancel')),
+              ),
+              ElevatedButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        double? customVal;
+                        if (selectedMode == 'manual') {
+                          final parsed = double.tryParse(customController.text.trim());
+                          if (parsed == null || parsed <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter a valid positive number for custom fair value'),
+                              ),
+                            );
+                            return;
+                          }
+                          customVal = parsed;
+                        }
+
+                        final messenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(ctx);
+                        setDialogState(() => isSubmitting = true);
+                        try {
+                          await apiService.updateArabicStockTarget(
+                            ticker: stock.ticker,
+                            targetMode: selectedMode,
+                            customFairValue: customVal,
+                          );
+                          if (mounted) {
+                            navigator.pop();
+                            _refresh();
+                            messenger.showSnackBar(
+                              SnackBar(content: Text(l.t('target_mode_updated'))),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSubmitting = false);
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              SnackBar(content: Text('${l.t('error')}: $e')),
+                            );
+                          }
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l.t('save_changes')),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

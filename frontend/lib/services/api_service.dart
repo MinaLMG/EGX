@@ -81,6 +81,29 @@ class ApiService {
     }
   }
 
+  Future<Stock> updateArabicStockTarget({
+    required String ticker,
+    required String targetMode,
+    double? customFairValue,
+  }) async {
+    final headers = await _auth.authHeaders();
+    final response = await http.patch(
+      Uri.parse('$baseUrl/stocks/$ticker/arabic-target'),
+      headers: {...headers, 'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'targetMode': targetMode,
+        'customFairValue': customFairValue,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return Stock.fromJson(json.decode(response.body));
+    } else {
+      final body = json.decode(response.body);
+      throw Exception(body['message'] ?? 'Failed to update target mode');
+    }
+  }
+
   Future<void> createStock(String ticker, String name, double price) async {
     final headers = await _auth.authHeaders();
     final response = await http.post(

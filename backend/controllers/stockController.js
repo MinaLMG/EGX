@@ -56,6 +56,43 @@ exports.matchArabicStock = async (req, res) => {
     }
 };
 
+// @desc    Update ArabicStock target mode and custom fair value (Admin only)
+// @route   PATCH /api/stocks/:ticker/arabic-target
+exports.updateArabicStockTarget = async (req, res) => {
+    try {
+        const { ticker } = req.params;
+        const { targetMode, customFairValue } = req.body;
+
+        if (!['max', 'analyzers', 'fair_value', 'manual'].includes(targetMode)) {
+            return res.status(400).json({ message: 'Invalid target mode' });
+        }
+
+        const updateData = { arabic_stock_target_mode: targetMode };
+        if (targetMode === 'manual') {
+            if (customFairValue === undefined || customFairValue === null || isNaN(Number(customFairValue))) {
+                return res.status(400).json({ message: 'Valid custom fair value is required for manual mode' });
+            }
+            updateData.arabic_stock_custom_fair_value = Number(customFairValue);
+        }
+
+        const stock = await Stock.findOneAndUpdate(
+            { ticker: ticker.toUpperCase() },
+            updateData,
+            { returnDocument: 'after' }
+        );
+
+        if (!stock) return res.status(404).json({ message: 'Stock not found' });
+
+        const scoringService = require('../services/scoringService');
+        await scoringService.calculateAllScores();
+
+        const updatedStock = await Stock.findOne({ ticker: ticker.toUpperCase() });
+        res.json(updatedStock);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
 // @desc    Create a new stock
 // @route   POST /api/stocks
 exports.createStock = async (req, res) => {

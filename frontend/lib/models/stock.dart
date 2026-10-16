@@ -5,7 +5,7 @@ class Stock {
   final double? arabicStockFairValue;
   final double? arabicStockAnalyzersFairValue;
   final String? arabicStockGetter;
-  final DateTime lastUpdated;
+  final DateTime? lastUpdated;
 
   Stock({
     required this.ticker,
@@ -14,7 +14,9 @@ class Stock {
     this.arabicStockFairValue,
     this.arabicStockAnalyzersFairValue,
     this.arabicStockGetter,
-    required this.lastUpdated,
+    this.lastUpdated,
+    this.arabicStockTargetMode = 'max',
+    this.arabicStockCustomFairValue,
     this.bfScore = 0.0,
     this.fundamentalScore = 0.0,
     this.technicalScore = 0.0,
@@ -36,6 +38,8 @@ class Stock {
           ? (json['arabic_stock_analyzers_fair_value'] as num).toDouble() 
           : null,
       arabicStockGetter: json['arabic_stock_getter'],
+      arabicStockTargetMode: json['arabic_stock_target_mode'] ?? 'max',
+      arabicStockCustomFairValue: (json['arabic_stock_custom_fair_value'] as num?)?.toDouble(),
       lastUpdated: json['lastUpdated'] != null 
           ? DateTime.parse(json['lastUpdated']) 
           : DateTime.now(),
@@ -47,6 +51,26 @@ class Stock {
       rspScore: (json['rsp_score'] as num?)?.toDouble() ?? 0.0,
       totalScore: (json['total_score'] as num?)?.toDouble() ?? 0.0,
     );
+  }
+
+  final String arabicStockTargetMode;
+  final double? arabicStockCustomFairValue;
+
+  double? get effectiveArabicStockTarget {
+    switch (arabicStockTargetMode) {
+      case 'manual':
+        return arabicStockCustomFairValue;
+      case 'analyzers':
+        return arabicStockAnalyzersFairValue;
+      case 'fair_value':
+        return arabicStockFairValue;
+      case 'max':
+      default:
+        final fv = arabicStockFairValue ?? 0.0;
+        final afv = arabicStockAnalyzersFairValue ?? 0.0;
+        final m = fv > afv ? fv : afv;
+        return m > 0 ? m : null;
+    }
   }
 
   final double bfScore;
