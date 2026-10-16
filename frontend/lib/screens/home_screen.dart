@@ -7,6 +7,7 @@ import 'match_wizard_screen.dart';
 import 'recommendations_screen.dart';
 import 'wallet_screen.dart';
 import 'admin_users_screen.dart';
+import 'stats_screen.dart';
 
 /// Home tab content — embedded inside MainShell.
 /// No Scaffold or AppBar here; those live in the shell.
@@ -110,6 +111,14 @@ class HomeScreenContent extends StatelessWidget {
                     icon: Icons.people_outline,
                     color: Colors.pink.shade400,
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AdminUsersScreen())),
+                  ),
+                  const SizedBox(height: 20),
+                  _MenuCard(
+                    title: l.t('admin_stats'),
+                    subtitle: l.t('admin_stats_sub'),
+                    icon: Icons.query_stats,
+                    color: Colors.deepPurple.shade400,
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => StatsScreen())),
                   ),
                 ],
                 const SizedBox(height: 24),

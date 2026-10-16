@@ -265,6 +265,90 @@ class WalletService {
             }
         };
     }
+
+    /**
+     * Calculates stats for all wallets for admin statistical visualizations.
+     */
+    async getAllWalletsStats() {
+        const wallets = await Wallet.find({})
+            .populate('items.stock')
+            .populate('user', 'name email status isDeleted role');
+
+        const stats = [];
+        for (const wallet of wallets) {
+            if (!wallet.user || wallet.user.isDeleted || wallet.user.status === 'pending') {
+                continue;
+            }
+
+            const totalVal = this.calculateTotalValue(wallet);
+            const profitMetrics = this.calculateProfitMetrics(wallet, totalVal);
+
+            let firstDepositDate = null;
+            let firstDepositAmount = 0;
+            let totalDeposits = 0;
+            let totalWithdrawals = 0;
+
+            const activeSnapshotId = wallet.activePointOnTimeId ? wallet.activePointOnTimeId.toString() : null;
+            const activeSnapshot = activeSnapshotId ? (wallet.pointsOnTime || []).find(p => p._id.toString() === activeSnapshotId) : null;
+
+            if (activeSnapshot) {
+                firstDepositDate = new Date(activeSnapshot.date);
+                firstDepositAmount = activeSnapshot.balance;
+                totalDeposits += activeSnapshot.balance;
+
+                (wallet.transactions || []).forEach(t => {
+                    const tDate = new Date(t.date);
+                    if (tDate <= firstDepositDate) return;
+                    if (t.type === 'deposit') {
+                        totalDeposits += t.value;
+                    } else if (t.type === 'withdrawal') {
+                        totalWithdrawals += t.value;
+                    }
+                });
+            } else {
+                const sortedTx = [...(wallet.transactions || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+                for (const t of sortedTx) {
+                    if (t.type === 'deposit') {
+                        if (!firstDepositDate) {
+                            firstDepositDate = new Date(t.date);
+                            firstDepositAmount = t.value;
+                        }
+                        totalDeposits += t.value;
+                    } else if (t.type === 'withdrawal') {
+                        totalWithdrawals += t.value;
+                    }
+                }
+            }
+
+            if (!firstDepositDate && (wallet.cash > 0 || (wallet.items && wallet.items.length > 0))) {
+                firstDepositDate = wallet.createdAt || new Date();
+                firstDepositAmount = totalVal;
+                totalDeposits = totalVal;
+            }
+
+            if (!firstDepositDate) {
+                firstDepositDate = wallet.createdAt || new Date();
+            }
+
+            stats.push({
+                walletId: wallet._id.toString(),
+                userId: wallet.user._id.toString(),
+                userName: wallet.user.name || wallet.user.email,
+                userEmail: wallet.user.email,
+                firstDepositDate: firstDepositDate.toISOString(),
+                firstDepositAmount: firstDepositAmount,
+                totalDeposits: totalDeposits,
+                totalWithdrawals: totalWithdrawals,
+                totalNetInvestment: profitMetrics.totalNetInvestment,
+                walletValue: profitMetrics.currentValueForProfit,
+                revenue: profitMetrics.revenue,
+                revenuePercentage: profitMetrics.revenuePercentage,
+                yearlyRevenue: profitMetrics.yearlyRevenue,
+                totalDuration: profitMetrics.totalDuration
+            });
+        }
+        return stats;
+    }
 }
 
 module.exports = new WalletService();

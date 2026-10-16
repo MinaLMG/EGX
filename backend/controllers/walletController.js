@@ -22,6 +22,17 @@ exports.getWallet = async (req, res) => {
     }
 };
 
+// @desc    Get all wallets stats for admin graphs
+// @route   GET /api/wallet/admin/stats
+exports.getWalletsStats = async (req, res) => {
+    try {
+        const stats = await walletService.getAllWalletsStats();
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 // @desc    Get wallet for a specific user (Admin only)
 // @route   GET /api/wallet/admin/:userId
 exports.getWalletForUser = async (req, res) => {

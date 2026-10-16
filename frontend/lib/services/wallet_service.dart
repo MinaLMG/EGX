@@ -229,4 +229,18 @@ class WalletService {
       throw Exception('Failed to bulk update prices: ${response.body}');
     }
   }
+
+  Future<List<Map<String, dynamic>>> getAdminStats() async {
+    final headers = await _auth.authHeaders();
+    final response = await http.get(
+      Uri.parse('$_baseUrl/admin/stats'),
+      headers: headers,
+    );
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to load wallet stats: ${response.body}');
+    }
+  }
 }

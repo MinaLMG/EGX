@@ -4,6 +4,7 @@ const {
     getWallet,
     updateWalletItem,
     updateWalletSettings,
+    getWalletsStats,
     getWalletForUser,
     addTransaction,
     updateTransaction,
@@ -21,7 +22,8 @@ router.get('/', getWallet);
 router.post('/items', updateWalletItem);
 router.patch('/', updateWalletSettings);
 
-// Admin simulate wallet
+// Admin stats and simulate wallet
+router.get('/admin/stats', authorize('admin'), getWalletsStats);
 router.get('/admin/:userId', authorize('admin'), getWalletForUser);
 
 // Transactions
