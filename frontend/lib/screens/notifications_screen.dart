@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/notification_api_service.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/app_settings.dart';
 
 class NotificationsScreen extends StatefulWidget {
   @override
@@ -43,38 +44,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    return AnimatedBuilder(
+      animation: AppSettings.instance,
+      builder: (context, _) {
+        final l = AppLocalizations.of(context);
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final primaryColor = Theme.of(context).colorScheme.primary;
+        final isArabic = AppSettings.instance.isArabic;
 
-    return Scaffold(
-      backgroundColor: isDark ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF5F0FF),
-      appBar: AppBar(
-        title: Text(
-          '🔔 ${l.t('notifications')}',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        backgroundColor: isDark ? Theme.of(context).appBarTheme.backgroundColor : primaryColor,
-        foregroundColor: isDark ? Theme.of(context).appBarTheme.foregroundColor : Colors.white,
-        elevation: 0,
-      ),
-      body: _loading
-          ? Center(child: CircularProgressIndicator(color: primaryColor))
-          : _notifications.isEmpty
-               ? _buildEmpty(l)
-               : RefreshIndicator(
-                  onRefresh: _load,
-                  color: primaryColor,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _notifications.length,
-                    itemBuilder: (ctx, i) => _buildCard(_notifications[i], l),
-                  ),
-                ),
+        return Directionality(
+          textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+          child: Scaffold(
+            backgroundColor: isDark ? Theme.of(context).scaffoldBackgroundColor : const Color(0xFFF5F0FF),
+            appBar: AppBar(
+              title: Text(
+                '🔔 ${l.t('notifications')}',
+                textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              ),
+              backgroundColor: isDark ? Theme.of(context).appBarTheme.backgroundColor : primaryColor,
+              foregroundColor: isDark ? Theme.of(context).appBarTheme.foregroundColor : Colors.white,
+              elevation: 0,
+            ),
+            body: _loading
+                ? Center(child: CircularProgressIndicator(color: primaryColor))
+                : _notifications.isEmpty
+                     ? _buildEmpty(l, isArabic)
+                     : RefreshIndicator(
+                        onRefresh: _load,
+                        color: primaryColor,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _notifications.length,
+                          itemBuilder: (ctx, i) => _buildCard(_notifications[i], l, isArabic),
+                        ),
+                      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildEmpty(AppLocalizations l) {
+  Widget _buildEmpty(AppLocalizations l, bool isArabic) {
     final primaryColor = Theme.of(context).colorScheme.primary;
     return Center(
       child: Column(
@@ -84,6 +95,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           const SizedBox(height: 16),
           Text(
             l.t('no_notifications'),
+            textAlign: TextAlign.center,
+            textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
             style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 8),
@@ -92,6 +105,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Text(
               l.t('notify_market_action'),
               textAlign: TextAlign.center,
+              textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
               style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
             ),
           ),
@@ -100,7 +114,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildCard(Map<String, dynamic> notification, AppLocalizations l) {
+  Widget _buildCard(Map<String, dynamic> notification, AppLocalizations l, bool isArabic) {
     final bool seen = notification['seen'] ?? true;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
@@ -145,24 +159,33 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             size: 26,
           ),
         ),
-        title: Text(
-          notification['title'] ?? '',
-          style: TextStyle(
-            fontWeight: seen ? FontWeight.normal : FontWeight.bold,
-            fontSize: 15,
+        title: SizedBox(
+          width: double.infinity,
+          child: Text(
+            notification['title'] ?? '',
+            textAlign: TextAlign.right,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(
+              fontWeight: seen ? FontWeight.normal : FontWeight.bold,
+              fontSize: 15,
+            ),
           ),
         ),
         subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 4),
             Text(
               notification['content'] ?? '',
+              textAlign: TextAlign.right,
+              textDirection: TextDirection.rtl,
               style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 6),
             Text(
               _timeAgo(notification['createdAt'] ?? '', l),
+              textAlign: TextAlign.right,
+              textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
               style: TextStyle(
                 fontSize: 11,
                 color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,

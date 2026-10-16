@@ -421,7 +421,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 icon: Icon(Icons.notifications_active, size: 20),
               ),
               Tab(text: l.t('next'), icon: Icon(Icons.trending_up, size: 20)),
-              Tab(text: l.t('profit'), icon: Icon(Icons.calculate, size: 20)),
+              Tab(text: l.t('revenue'), icon: Icon(Icons.calculate, size: 20)),
             ],
             labelColor: Theme.of(context).brightness == Brightness.dark 
                 ? Theme.of(context).colorScheme.primary 
